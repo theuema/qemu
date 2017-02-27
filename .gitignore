@@ -116,3 +116,6 @@ TAGS
 docker-src.*
 *~
 /build
+/.idea
+CMakeLists.txt
+cmake-build-debug
