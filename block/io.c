@@ -2096,7 +2096,7 @@ BlockAIOCB *bdrv_aio_readv(BdrvChild *child, int64_t sector_num,
                            BlockCompletionFunc *cb, void *opaque)
 {
     trace_bdrv_aio_readv(child->bs, sector_num, nb_sectors, opaque);
-
+    printf("+++++++++ here!"); //theuema
     assert(nb_sectors << BDRV_SECTOR_BITS == qiov->size);
     return bdrv_co_aio_prw_vector(child, sector_num << BDRV_SECTOR_BITS, qiov,
                                   0, cb, opaque, false);

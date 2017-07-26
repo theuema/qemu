@@ -35,6 +35,8 @@
 #endif
 #include "sysemu/cpus.h"
 #include "sysemu/replay.h"
+#include "inttypes.h"
+#include "include/exec/tb-context.h"
 
 /* -icount align implementation. */
 
@@ -571,9 +573,16 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
 {
     uintptr_t ret;
     int32_t insns_left;
+    TranslationBlock *tb_old = tb;
+
+    //printf("+++++++++ this is cpu_loop_exec_tb, size is: %" PRIu16 " Address is: %zx \n", tb->size, (size_t)tb); //theuema
 
     trace_exec_tb(tb, tb->pc);
     ret = cpu_tb_exec(cpu, tb);
+
+    if (tb_old == tb)
+        //printf("---------- tb is the same after exec, the ret value is: %d \n", ret); //theuema
+
     tb = (TranslationBlock *)(ret & ~TB_EXIT_MASK);
     *tb_exit = ret & TB_EXIT_MASK;
     if (*tb_exit != TB_EXIT_REQUESTED) {

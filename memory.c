@@ -1130,6 +1130,8 @@ static uint64_t memory_region_ram_device_read(void *opaque,
     MemoryRegion *mr = opaque;
     uint64_t data = (uint64_t)~0;
 
+    printf("################################ memory_region_ram_device_read addr = %x\n", addr); //theuema
+
     switch (size) {
     case 1:
         data = *(uint8_t *)(mr->ram_block->host + addr);
@@ -1154,6 +1156,8 @@ static void memory_region_ram_device_write(void *opaque, hwaddr addr,
                                            uint64_t data, unsigned size)
 {
     MemoryRegion *mr = opaque;
+
+    printf("################################ memory_region_ram_device_write addr = %x\n", addr);
 
     trace_memory_region_ram_device_write(get_cpu_index(), mr, addr, data, size);
 
