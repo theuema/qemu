@@ -1,4 +1,4 @@
-build*
+build_*
 theuema*
 .idea/
 CMakeLists.txt

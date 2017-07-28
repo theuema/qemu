@@ -1,0 +1,46 @@
+#!/bin/bash
+
+EXPECTED_ARGS=1
+E_BADARGS=65
+#SFOLDER="/Working/qemu"
+
+if [ $# -ne $EXPECTED_ARGS ]
+then
+  echo "Arguments: $0 'x86' 'arm' 'clean'"
+  exit $E_BADARGS
+else
+  arg=$1 
+fi
+
+if [ $arg == "x86" ]
+then 
+	rm -rf build_x86_64_debug   	
+	mkdir -p build_x86_64_debug; cd build_x86_64_debg 
+	../configure --python=/usr/bin/python2 --enable-trace-backend=simple --disable-werror --disable-strip --enable-debug --enable-debug-info --target-list="x86_64-softmmu, x86_64-linux-user"
+	make
+elif [ $arg == "clean" ]
+then
+	rm -rf build_x86_64
+	rm -rf build_x86_64_debug	
+	rm -rf build_arm_debug 
+else
+   if [ $arg == "arm" ]
+   then 
+	rm -rf build_arm_debug   	
+	mkdir -p build_arm_debug; cd build_arm_debug  
+        ../configure --python=/usr/bin/python2 --target-list="aarch64-softmmu,microblazeel-softmmu,arm-softmmu" --enable-debug --enable-fdt --enable-sdl --disable-werror --extra-cflags="-DXILINX_SPIPS_ERR_DEBUG=2 \
+                    -DM25P80_ERR_DEBUG=2 \
+                    -DNAND_ERR_DEBUG=1 \
+                    -DARASAN_NFC_ERR_DEBUG=1 \
+                    -DSDHC_DEBUG \
+                    -DFDT_GENERIC_UTIL_ERR_DEBUG=2 \
+                    -DCADENCE_GEM_ERR_DEBUG \
+		    -DCONFIG_FDT" 
+	make -j16
+   else
+     	echo "Unknown Argument"
+        exit $E_BADARGS
+        fi	
+      
+fi
+
