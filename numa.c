@@ -417,7 +417,6 @@ static void allocate_system_memory_nonnuma(MemoryRegion *mr, Object *owner,
     if (mem_path) {
 #ifdef __linux__
         Error *err = NULL;
-        //THEUEMA printf
         memory_region_init_ram_from_file(mr, owner, name, ram_size, false,
                                          mem_path, &err);
         if (err) {
@@ -436,10 +435,6 @@ static void allocate_system_memory_nonnuma(MemoryRegion *mr, Object *owner,
         exit(1);
 #endif
     } else {
-        //THEUEMA printf
-        printf("***** numa.c-> allocate_system_memory_nonnuma -> mem_path: %x\n", mem_path);
-        printf("** Now calling memory_region_init_ram()\n");
-        printf("** with mr %x, owner %x, name %s, ram_size %d\n",mr, owner, name, ram_size);
         memory_region_init_ram(mr, owner, name, ram_size, &error_fatal);
     }
     vmstate_register_ram_global(mr);
@@ -453,12 +448,6 @@ void memory_region_allocate_system_memory(MemoryRegion *mr, Object *owner,
     int i;
 
     if (nb_numa_nodes == 0 || !have_memdevs) {
-        //THEUEMA printf
-        printf("***** numa.c-> memory_region_allocate_system_memory called\n");
-        printf("** from xilinx_zynq_enc.c. Will call allocate_system_memory_nonnuma()\n");
-        printf("** with mr %x owner %x name %s and ram size %d. \n", mr, owner, name, ram_size);
-        printf("** Additional info on 'NUMA-Nodes' = MAX_NODES: %d & nb_numa_nodes: %d\n", MAX_NODES, nb_numa_nodes);
-
         allocate_system_memory_nonnuma(mr, owner, name, ram_size);
         return;
     }

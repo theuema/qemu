@@ -2219,48 +2219,11 @@ static void check_watchpoint(int offset, int len, MemTxAttrs attrs, int flags)
 
 
     if (cpu->watchpoint_hit) {
-        /* We re-entered the check after replacing the TB. Now raise
-         * the debug interrupt so that is will trigger after the
-         * current instruction. */
-
-        /* *TODO* theuema //
-         * If the memory address is watched this function will be called 2 times for one watchpoint.
-         *
-         * -> 2nd call happens from either
-         * -> tb_check_watchpoint->watch_mem_read()->check_watchpoint()
-         * -> or
-         * -> tb_check_watchpoint->watch_mem_write()->check_watchpoint()
-         *
-         * This function is called from memory watch functions
-         * watch_mem_read() & watch_mem_write(), which are called by Macros or something? *TODO*
-         *
-         * At first call it will find and invalidate the corresponding TB. (cpu->watchpoint_hit == NULL)
-         * It is either searched in the Hash Table or re-generated.
-         * Some flags are set including BP_WATCHPOINT_HIT which leads us HERE in 2nd call.
-         * Here, the interrupt happens and we get a DEBUG message to the terminal.
-         *
-         * Why do qemu need to invalidate current translation block and regenerate the code?
-         * Because most of the time a memory access is in the middle of a translation block.
-         * If we want to rerun this instruction,
-         * we need to regenerate the code from the current instruction (memory address).
-         * Moreover before invalidating the translation block,
-         * qemu needs to sync the cpu state to guest cpu(cpu_restore_state).
-         * That’s because the cpu state in the middle of translation block is different from the actual cpu state.
-         * --> Understanding this process needs some knowledge of binary translation.
-         * */
         cpu_interrupt(cpu, CPU_INTERRUPT_DEBUG);
         return;
     }
     vaddr = (cpu->mem_io_vaddr & TARGET_PAGE_MASK) + offset;
     vaddr = cc->adjust_watchpoint_address(cpu, vaddr, len);
-
-    /* *TODO* theuema //
-     * This is the way to go. 'Everytime' we come here, we need to trace a memory access.
-     * I am not sure about the 'Everytime'. Check the I/O and Memory stuff from the qemu reports you found
-     * */
-
-    fprintf(stderr, "************ here we are check_watchpoint, qemu checks address: %x\n", vaddr);
-    exit(-1);
 
 
     QTAILQ_FOREACH(wp, &cpu->watchpoints, entry) {

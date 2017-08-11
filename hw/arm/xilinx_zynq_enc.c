@@ -13,6 +13,8 @@
  *
  * You should have received a copy of the GNU General Public License along
  * with this program; if not, see <http://www.gnu.org/licenses/>.
+ *
+ * copied and modified by mtheuermann started on 09.08.17.
  */
 
 #include "qemu/osdep.h"
@@ -23,16 +25,17 @@
 #include "hw/arm/arm.h"
 #include "net/net.h"
 #include "exec/address-spaces.h"
-#include "sysemu/sysemu.h"
-#include "hw/boards.h"
 #include "hw/block/flash.h"
 #include "sysemu/block-backend.h"
+#include "hw/loader.h"
 #include "hw/loader.h"
 #include "hw/misc/zynq-xadc.h"
 #include "hw/ssi/ssi.h"
 #include "qemu/error-report.h"
 #include "hw/sd/sd.h"
 #include "hw/char/cadence_uart.h"
+
+#include "sysemu/xilinx_mem_enc.h"
 
 #define NUM_SPI_FLASHES 4
 #define NUM_QSPI_FLASHES 2
@@ -179,6 +182,7 @@ static void zynq_init_enc(MachineState *machine)
 
     cpu = ARM_CPU(object_new(object_class_get_name(cpu_oc)));
 
+
     /* By default A9 CPUs have EL3 enabled.  This board does not
      * currently support EL3 so the CPU EL3 property is disabled before
      * realization.
@@ -198,16 +202,21 @@ static void zynq_init_enc(MachineState *machine)
         ram_size = 0x80000000;
     }
 
-    /* DDR remapped to address zero.  */
-    //THEUEMA printf
+    //THEUEMA -status printf-
     printf("***** xilinx_zynq_enc.c -> zynq_init_enc;\n");
     printf("** Seems the correct board is build.\n");
-    printf("** Will now call memory_region_allocate_system_memory()\n");
+    printf("** Will now call memory_region_allocate_system_enc_memory_region()\n");
+    printf("** The address-space-size is: %d\n", address_space_mem->size);
+    printf("** Ram Size is: %d. Starting Subregion at 0;\n", ram_size);
+    printf("** On Chip Memory Starting with %d, Size is 256K -> %d.\n",0xFFFC0000 ,256 << 10);
 
-    //THEUMA Memory Mod with Ops
-    
-    memory_region_allocate_system_memory(ext_ram, NULL, "zynq.ext_ram",
-                                         ram_size);
+    /* THEUMA getting serious: Memory Mod with Ops
+     * DDR remapped to address zero.
+     * old:
+     * memory_region_allocate_system_memory(ext_ram, NULL, "zynq.ext_ram", ram_size);
+     */
+
+    memory_region_allocate_system_enc_memory_region(ext_ram, NULL, "zynq.ext_ram", ram_size);
     memory_region_add_subregion(address_space_mem, 0, ext_ram);
 
     /* 256K of on-chip memory */
