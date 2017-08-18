@@ -238,7 +238,6 @@ static void zynq_init_enc(MachineState *machine)
     dev = qdev_create(NULL, "xilinx,zynq_slcr");
     qdev_init_nofail(dev);
     sysbus_mmio_map(SYS_BUS_DEVICE(dev), 0, 0xF8000000);
-
     dev = qdev_create(NULL, "a9mpcore_priv");
     qdev_prop_set_uint32(dev, "num-cpu", 1);
     qdev_init_nofail(dev);

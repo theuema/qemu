@@ -25,19 +25,37 @@
 #include "exec/memory-internal.h"
 #include "exec/ram_addr.h"
 
+//__uint128_t key = 0x2123456789ABCDEF1123456789ABCDEF; // not working due to datatype?
+
+  // 15 14 13 12 11 10 9  8  7  6  5  4  3  2  1  0   // tested byte_nr
+// 0x11 23 45 67 89 AB CD EF 21 23 45 67 89 AA CD EF  // curr_key
+uint64_t key_a = 0x1123456789ABCDEF;
+uint64_t key_b = 0x2123456789AACDEF;
+unsigned int ring = 16; // 128bit key
+
+
 void write_enc(void *opaque, hwaddr addr,
                uint64_t *data, unsigned size)
 {
-    printf("++ Mem write! addr %x, size %d\n", addr, size);
+    __uint128_t key = ((__uint128_t)key_a << 64) | key_b;
+    unsigned int lower4bits = addr & 0xF;   // lower 4 bits "enabled" via & mask
 
+    // create key
+    // endianess is little endian (tested) -> read hex from right to left.
+    // key stored: efcdaa8967452321 when starting with byte 0
+    // when i start > 8 i need modulo 16 to get a ring
+    uint64_t data_key = 0;
+    int curr_byte_key = 0;
+    for(int byte_nr = lower4bits; byte_nr < lower4bits+size; byte_nr++){
+        curr_byte_key = (key >> (8*(byte_nr % ring))) & 0xff;
+        data_key = (data_key << 8) | (uint64_t)curr_byte_key;
+    }
 
 }
 
 void read_dec(void *opaque, hwaddr addr,
               uint64_t *data, unsigned size)
 {
-    //printf("++ Mem read! addr %x, size %d\n", addr, size);
-
 
 }
 
@@ -66,7 +84,7 @@ static uint64_t memory_region_ram_read(void *opaque,
      * trace_memory_region_ram_device_read(get_cpu_index(), mr, addr, data, size);
      */
 
-    read_dec(opaque, addr, &data, size);
+    //read_dec(opaque, addr, &data, size);
     return data;
 }
 
@@ -139,6 +157,7 @@ void memory_region_ram_init_ops(MemoryRegion *mr,
                            uint64_t size,
                            Error **errp)
 {
+    printf("** memory_region_ram_init_ops(): now: memory_region_init()\n");
     memory_region_init(mr, owner, name, size);
     mr->ram = true;
     mr->ram_device = true;
@@ -148,7 +167,7 @@ void memory_region_ram_init_ops(MemoryRegion *mr,
     mr->destructor = mem_destructor_ram;
     mr->dirty_log_mask = tcg_enabled() ? (1 << DIRTY_MEMORY_CODE) : 0;
     mr->ram_block = qemu_ram_alloc(size, mr, errp);
-    printf("** memory_region_ram_init_ops(): ram-alloc complete. ram_device size: %d\n");
+    printf("** memory_region_ram_init_ops(): ram-alloc complete. ram_device size: %d\n", size);
 }
 
 /* THEUEMA
