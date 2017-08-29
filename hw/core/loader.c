@@ -57,6 +57,7 @@
 #include "qemu/cutils.h"
 
 #include <zlib.h>
+#include "sysemu/xilinx_mem_enc.h"
 
 static int roms_loaded;
 
@@ -927,6 +928,11 @@ int rom_add_file(const char *file, const char *fw_dir,
     rom->data     = g_malloc0(rom->datasize);
     lseek(fd, 0, SEEK_SET);
     rc = read(fd, rom->data, rom->datasize);
+
+    //theuema
+    //printf("((((((()))))))) apply crypt in rom_add_file: %zx, dataptr: %zx, size: %zu\n", addr, rom->data, rom->datasize);
+    //apply_crypt(addr, rom->data, rom->datasize, "rom_add_file");
+
     if (rc != rom->datasize) {
         fprintf(stderr, "rom: file %-20s: read error: rc=%d (expected %zd)\n",
                 rom->name, rc, rom->datasize);
@@ -1000,6 +1006,10 @@ MemoryRegion *rom_add_blob(const char *name, const void *blob, size_t len,
     rom->romsize  = max_len ? max_len : len;
     rom->datasize = len;
     rom->data     = g_malloc0(rom->datasize);
+
+    //theuema
+    //apply_crypt(addr, blob, len, "rom_add_blob");
+
     memcpy(rom->data, blob, len);
     rom_insert(rom);
     if (fw_file_name && fw_cfg) {

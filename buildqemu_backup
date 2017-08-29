@@ -1,0 +1,50 @@
+#!/bin/bash
+
+EXPECTED_ARGS=1
+E_BADARGS=65
+#SFOLDER="/Working/qemu"
+
+if [ $# -ne $EXPECTED_ARGS ]
+then
+  echo "Arguments: $0 'x86' 'arm' 'clean' 'debug'"
+  exit $E_BADARGS
+else
+  arg=$1 
+fi
+
+if [ $arg == "x86" ]
+then 
+	rm -rf build_x86_64_debug   	
+	mkdir -p build_x86_64_debug; cd build_x86_64_debg 
+	../configure --python=/usr/bin/python2 --enable-trace-backend=simple --disable-werror --disable-strip --enable-debug --enable-debug-info --target-list="x86_64-softmmu, x86_64-linux-user"
+	make
+elif [ $arg == "clean" ]
+then
+	rm -rf build_x86_64_debug	
+	rm -rf build_arm_debug 
+else
+   if [ $arg == "arm" ]
+   then 
+	rm -rf build_arm_debug   	
+	mkdir -p build_arm_debug; cd build_arm_debug  
+        ../configure --python=/usr/bin/python2 --target-list="aarch64-softmmu, aarch64-linux-user, arm-linux-user, arm-softmmu" --enable-debug --enable-fdt --enable-sdl --disable-werror 
+
+# removed target: microblazeel-softmmu
+#--extra-cflags="-DXILINX_SPIPS_ERR_DEBUG=2 \
+#                    -DM25P80_ERR_DEBUG=2 \
+#                    -DNAND_ERR_DEBUG=1 \
+#                    -DARASAN_NFC_ERR_DEBUG=1 \
+#                    -DSDHC_DEBUG \
+#                    -DFDT_GENERIC_UTIL_ERR_DEBUG=2 \
+#		    -DCONFIG_FDT" 
+	make -j16
+   elif [ $arg == "debug" ]
+   then
+	gdb /working/qemu/build_arm_debug/aarch64-softmmu/qemu-system-aarch64 -ex "break zynq_init_enc" -ex "run -initrd /working/build_yocto_pyro/tmp/deploy/images/qemu-zynq7/core-image-minimal-qemu-zynq7-20170804100356.rootfs.cpio -machine xilinx-zynq-a9_enc -m 1024 -kernel /working/build_yocto_pyro/tmp/deploy/images/qemu-zynq7/uImage--4.9-xilinx-v2017.1+git0+68e6869cfb-r0-qemu-zynq7-20170725140338.bin -dtb /working/build_yocto_pyro/tmp/deploy/images/qemu-zynq7/qemu-zynq7.dtb" -ex "tui enable" 
+   else
+	echo "Unknown Argument"
+	exit $E_BADARGS
+	fi	
+      
+fi
+

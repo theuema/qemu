@@ -203,12 +203,12 @@ static void zynq_init_enc(MachineState *machine)
     }
 
     //THEUEMA -status printf-
-    printf("***** xilinx_zynq_enc.c -> zynq_init_enc;\n");
+/*    printf("***** xilinx_zynq_enc.c -> zynq_init_enc;\n");
     printf("** Seems the correct board is build.\n");
     printf("** Will now call memory_region_allocate_system_enc_memory_region()\n");
     printf("** The address-space-size is: %d\n", address_space_mem->size);
     printf("** Ram Size is: %d. Starting Subregion at 0;\n", ram_size);
-    printf("** On Chip Memory Starting with %d, Size is 256K -> %d.\n",0xFFFC0000 ,256 << 10);
+    printf("** On Chip Memory Starting with %d, Size is 256K -> %d.\n",0xFFFC0000 ,256 << 10);*/
 
     /* THEUMA getting serious: Memory Mod with Ops
      * DDR remapped to address zero.
@@ -330,7 +330,6 @@ static void zynq_init_enc(MachineState *machine)
     zynq_binfo.loader_start = 0;
     zynq_binfo.board_setup_addr = BOARD_SETUP_ADDR;
     zynq_binfo.write_board_setup = zynq_write_board_setup_enc;
-
     arm_load_kernel(ARM_CPU(first_cpu), &zynq_binfo);
 }
 

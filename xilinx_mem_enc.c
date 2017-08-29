@@ -25,40 +25,118 @@
 #include "exec/memory-internal.h"
 #include "exec/ram_addr.h"
 
-//__uint128_t key = 0x2123456789ABCDEF1123456789ABCDEF; // not working due to datatype?
+#include "trace-root.h"
 
-  // 15 14 13 12 11 10 9  8  7  6  5  4  3  2  1  0   // tested byte_nr
-// 0x11 23 45 67 89 AB CD EF 21 23 45 67 89 AA CD EF  // curr_key
+
+static int cpu_index(void)
+{
+    if (current_cpu) {
+        return current_cpu->cpu_index;
+    }
+    return -1;
+}
+
+/* Global Key stuff
+ * direct usage of __uint128_t doesn't work
+ * so i go with 2x64bit and a cast
+ */
+//   15 14 13 12 11 10 9  8  7  6  5  4  3  2  1  0   // tested byte_nr
+// 0x11 23 45 67 89 AB CD EF 21 23 45 67 89 AA CD EF  // curr_key 128bit
 uint64_t key_a = 0x1123456789ABCDEF;
 uint64_t key_b = 0x2123456789AACDEF;
-unsigned int ring = 16; // 128bit key
 
 
-void write_enc(void *opaque, hwaddr addr,
-               uint64_t *data, unsigned size)
-{
+/* For memory blocks bigger than 8 byte i use bytewise en/decryption.
+ * Mainly used for encrypting kernel, dtb and bootloader via loader.c
+ */
+void crypt_big(hwaddr addr, uint8_t *data, size_t size){
     __uint128_t key = ((__uint128_t)key_a << 64) | key_b;
-    unsigned int lower4bits = addr & 0xF;   // lower 4 bits "enabled" via & mask
+    unsigned int size_of_key = sizeof(key);
+    unsigned int lower4bits = addr & 0xF;
 
-    // create key
-    // endianess is little endian (tested) -> read hex from right to left.
-    // key stored: efcdaa8967452321 when starting with byte 0
-    // when i start > 8 i need modulo 16 to get a ring
-    uint64_t data_key = 0;
-    int curr_byte_key = 0;
+    uint8_t curr_byte_key = 0;
     for(int byte_nr = lower4bits; byte_nr < lower4bits+size; byte_nr++){
-        curr_byte_key = (key >> (8*(byte_nr % ring))) & 0xff;
+        curr_byte_key = (key >> (8*(byte_nr % size_of_key))) & 0xff;
+        if(byte_nr-lower4bits == 0)
+            printf("********** in crypt_big curr databyte = %zx, curr_byte_key = %zx;"
+                           "lower4bits = %d\n", *data, curr_byte_key, lower4bits);
+        *data ^= curr_byte_key;
+        data++;
+    }
+}
+
+/* Create specific data key
+ * Endianess is little endian (tested) -> read hex from right to left.
+ * In test 8 byte key stored: efcdaa8967452321 when starting with byte 0
+ * So i need to swap (bswap64/32/16) the bytes to have correct byte be encrypted
+ * when i start > 8 i need modulo size_of_key for ring
+ */
+uint64_t get_data_key(unsigned int lower4bits, size_t size) {
+    __uint128_t key = ((__uint128_t)key_a << 64) | key_b; // not possible to global variable because of constant declaration
+    unsigned int size_of_key = sizeof(key);
+    uint64_t data_key = 0;
+    uint8_t curr_byte_key = 0;
+    for(int byte_nr = lower4bits; byte_nr < lower4bits+size; byte_nr++){
+        curr_byte_key = (key >> (8*(byte_nr % size_of_key))) & 0xff;
         data_key = (data_key << 8) | (uint64_t)curr_byte_key;
     }
-
+    switch (size) {
+        case 1:
+            return data_key;
+        case 2:
+            return (uint64_t)bswap16((uint16_t)data_key);
+        case 4:
+            return (uint64_t)bswap32((uint32_t)data_key);
+        case 8:
+            return bswap64(data_key);
+    }
+    return (uint64_t)-1;
 }
 
-void read_dec(void *opaque, hwaddr addr,
-              uint64_t *data, unsigned size)
+/* Function applies simple XOR Encryption/Decryption on either 1/2/4/8 byte Words
+ * via memory ops,
+ * or bigger memory blocks (kernel, dtb, bootloader..)
+ * via loader.c
+ */
+
+void apply_crypt(hwaddr addr, size_t *data, size_t size, const char* type)
 {
 
+    if(addr < 0x8000000)
+        goto crypt_done;
+
+    printf("((((((()))))))) apply crypt: %zx, dataptr: %zx, size: %zu, type = %s\n", addr, data, size, type);
+
+    //if(size > 8) {
+        crypt_big(addr, (uint8_t*)data, size);
+        goto crypt_done;
+    //}
+
+    unsigned int lower4bits = addr & 0xF;   // lower 4 bits "enabled" via & mask
+    uint64_t data_key = get_data_key(lower4bits, size);
+    assert(data_key != -1);
+
+    // apply crypt to data
+    switch (size) {
+        case 1:
+            *data ^= (uint8_t)data_key;
+            break;
+        case 2:
+            *data ^= (uint16_t)data_key;
+            break;
+        case 4:
+            *data ^= (uint32_t)data_key;
+            break;
+        case 8:
+            *data ^= data_key;
+            break;
+    }
+
+crypt_done:
+    return;
 }
 
+/* called by mem ops on every ext_ram read */
 static uint64_t memory_region_ram_read(void *opaque,
                                        hwaddr addr, unsigned size)
 {
@@ -80,24 +158,20 @@ static uint64_t memory_region_ram_read(void *opaque,
             break;
     }
 
-    /* THEUEMA -no trace-
-     * trace_memory_region_ram_device_read(get_cpu_index(), mr, addr, data, size);
-     */
-
-    //read_dec(opaque, addr, &data, size);
+    //THEUEMA -no trace-
+    //trace_memory_region_ram_device_read(cpu_index(), mr, addr, data, size);
+    //apply_crypt(addr, &data, (size_t)size, "mem_op_read");
     return data;
 }
 
+/* called by mem ops on every ext_ram write */
 static void memory_region_ram_write(void *opaque, hwaddr addr,
                                     uint64_t data, unsigned size)
 {
     MemoryRegion *mr = opaque;
-
-    write_enc(opaque, addr, &data, size);
-
-    /* THEUEMA -no trace-
-     * trace_memory_region_ram_device_write(get_cpu_index(), mr, addr, data, size);
-     */
+    //apply_crypt(addr, &data, (size_t)size, "mem_op_write");
+    //THEUEMA -no trace-
+    //trace_memory_region_ram_device_write(cpu_index(), mr, addr, data, size);
 
     switch (size) {
         case 1:
@@ -115,7 +189,7 @@ static void memory_region_ram_write(void *opaque, hwaddr addr,
     }
 }
 
-/* THEUEMA
+/* theuema
  * use of endianess
  * most likely ENDIANESS seems to be little endian
  * see cpu.h line 2347
@@ -144,11 +218,10 @@ static void mem_destructor_ram(MemoryRegion *mr)
     qemu_ram_free(mr->ram_block);
 }
 
-/* THEUEMA
+/* theuema
  * opaque needed?
  * in memory_region_init_ram_device_ptr() opaque is set to mr, lets do this.
  */
-
 void memory_region_ram_init_ops(MemoryRegion *mr,
                            Object *owner,
                            const MemoryRegionOps *ops,
@@ -157,7 +230,7 @@ void memory_region_ram_init_ops(MemoryRegion *mr,
                            uint64_t size,
                            Error **errp)
 {
-    printf("** memory_region_ram_init_ops(): now: memory_region_init()\n");
+    //printf("** memory_region_ram_init_ops(): now: memory_region_init()\n");
     memory_region_init(mr, owner, name, size);
     mr->ram = true;
     mr->ram_device = true;
@@ -167,7 +240,7 @@ void memory_region_ram_init_ops(MemoryRegion *mr,
     mr->destructor = mem_destructor_ram;
     mr->dirty_log_mask = tcg_enabled() ? (1 << DIRTY_MEMORY_CODE) : 0;
     mr->ram_block = qemu_ram_alloc(size, mr, errp);
-    printf("** memory_region_ram_init_ops(): ram-alloc complete. ram_device size: %d\n", size);
+    //printf("** memory_region_ram_init_ops(): ram-alloc complete. ram_device size: %d\n", size);
 }
 
 /* THEUEMA
@@ -183,8 +256,8 @@ void memory_region_allocate_system_enc_memory_region(MemoryRegion *mr, Object *o
                                                      uint64_t ram_size)
 {
 
-    printf("** In memory_region_allocate_system_enc_memory_region()!\n");
-    printf("** Will now call memory_region_ram_init_ops()!\n");
+    //printf("** In memory_region_allocate_system_enc_memory_region()!\n");
+    //printf("** Will now call memory_region_ram_init_ops()!\n");
     memory_region_ram_init_ops(mr, owner, &ram_mem_ops, mr, name, ram_size, &error_fatal);
 
 }

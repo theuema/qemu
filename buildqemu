@@ -1,46 +1,72 @@
 #!/bin/bash
 
-EXPECTED_ARGS=1
-E_BADARGS=65
-#SFOLDER="/Working/qemu"
+# has to be placed in qemu root folder!
 
-if [ $# -ne $EXPECTED_ARGS ]
+E_BADARGS=65
+QEMUROOT="/working/qemu"
+ARM64SMMUFOLDER="/working/qemu/build_arm_64_debug/aarch64-softmmu"
+ARM64USRFOLDER="/working/qemu/build_arm_64_debug/aarch64-linux-user"
+ZYNQDEPLOY="/working/build_yocto_pyro/tmp/deploy/images/qemu-zynq7"
+TESTFOLDER="/working/qemu/theuema_basic_tests"
+
+arg=$1
+
+if [[ $arg == "--help" ]]
 then
-  echo "Arguments: $0 'x86' 'arm' 'clean'"
+  echo "build/clean commands: $0 'x86' | 'arm64' | 'clean'"
+  echo "gdb ARM64 debug commands: $0 'qemudebug break_function' | 'kerneldebug'"
+  echo "usermode compile commands: $0 'aarch64 filename.c'"
+  echo "start built program bare metal on aarch64: $0 'baremetal'"
+  echo "|| builds are stored in: build_x86_64_debug | build_arm_64_debug"
+  echo "|| store source files in qemu/theuema_basic_tests"
   exit $E_BADARGS
 else
-  arg=$1 
+  param=$2
 fi
 
-if [ $arg == "x86" ]
-then 
-	rm -rf build_x86_64_debug   	
-	mkdir -p build_x86_64_debug; cd build_x86_64_debg 
-	../configure --python=/usr/bin/python2 --enable-trace-backend=simple --disable-werror --disable-strip --enable-debug --enable-debug-info --target-list="x86_64-softmmu, x86_64-linux-user"
-	make
-elif [ $arg == "clean" ]
+if [[ $arg == "x86" ]]
 then
-	rm -rf build_x86_64_debug	
-	rm -rf build_arm_debug 
+  rm -rf build_x86_64_debug
+  mkdir -p build_x86_64_debug; cd build_x86_64_debg
+  ../configure --python=/usr/bin/python2 --enable-trace-backend=simple --disable-werror --disable-strip --enable-debug --enable-debug-info --target-list="x86_64-softmmu, x86_64-linux-user"
+  make
+elif [[ $arg == "clean" ]]
+then
+  rm -rf build_x86_64_debug
+  rm -rf build_arm_64_debug
 else
-   if [ $arg == "arm" ]
-   then 
-	rm -rf build_arm_debug   	
-	mkdir -p build_arm_debug; cd build_arm_debug  
-        ../configure --python=/usr/bin/python2 --target-list="aarch64-softmmu,microblazeel-softmmu,arm-softmmu" --enable-debug --enable-fdt --enable-sdl --disable-werror 
+  if [[ $arg == "arm64" ]]
+  then
+    rm -rf build_arm_64_debug
+    mkdir -p build_arm_64_debug; cd build_arm_64_debug
+    ../configure --python=/usr/bin/python2 --target-list="aarch64-softmmu, aarch64-linux-user" --enable-debug --enable-fdt --enable-sdl --disable-werror
 
+# removed target: microblazeel-softmmu
 #--extra-cflags="-DXILINX_SPIPS_ERR_DEBUG=2 \
 #                    -DM25P80_ERR_DEBUG=2 \
 #                    -DNAND_ERR_DEBUG=1 \
 #                    -DARASAN_NFC_ERR_DEBUG=1 \
 #                    -DSDHC_DEBUG \
 #                    -DFDT_GENERIC_UTIL_ERR_DEBUG=2 \
-#		    -DCONFIG_FDT" 
-	make -j16
-   else
-     	echo "Unknown Argument"
-        exit $E_BADARGS
-        fi	
-      
+#		    -DCONFIG_FDT"
+    make -j16
+  elif [[ $arg == "qemudebug" ]] && [[ $param ]]
+  then
+    gdb ${ARM64SMMUFOLDER}/qemu-system-aarch64 -ex "break $param" -ex "run -initrd ${ZYNQDEPLOY}/core-image-minimal-qemu-zynq7-20170804100356.rootfs.cpio -machine xilinx-zynq-a9_enc -m 1024 -kernel ${ZYNQDEPLOY}/uImage--4.9-xilinx-v2017.1+git0+68e6869cfb-r0-qemu-zynq7-20170725140338.bin -dtb ${ZYNQDEPLOY}/qemu-zynq7.dtb" -ex "tui enable"
+  else
+    if [[ $arg == "kerneldebug" ]]
+    then
+      sudo ${ARM64SMMUFOLDER}/qemu-system-aarch64 -s -S -initrd ${ZYNQDEPLOY}/core-image-minimal-qemu-zynq7-20170804100356.rootfs.cpio -machine xilinx-zynq-a9_enc -m 1024 -kernel ${ZYNQDEPLOY}/uImage--4.9-xilinx-v2017.1+git0+68e6869cfb-r0-qemu-zynq7-20170725140338.bin -append 'root=/dev/ram0 rw debugshell  mem=1024M ip=192.168.7.2::192.168.7.1:255.255.255.0 console=ttyPS0,115200 earlyprintk ' -dtb ${ZYNQDEPLOY}/qemu-zynq7.dtb
+      #gnome-terminal -e gdb -ex "target remote localhost:1234" -ex "tui enable"
+    elif [[ $arg == "aarch64" ]] && [[ $param ]]
+    then
+      cd ${TESTFOLDER}
+      aarch64-linux-gnu-gcc -Wall -o test $param
+      cd ${QEMUROOT}
+    else
+      echo "Unknown arguments. See --help for usage information!"
+      exit $E_BADARGS
+    fi
+  fi
 fi
 
