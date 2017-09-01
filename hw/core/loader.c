@@ -927,11 +927,17 @@ int rom_add_file(const char *file, const char *fw_dir,
     rom->datasize = rom->romsize;
     rom->data     = g_malloc0(rom->datasize);
     lseek(fd, 0, SEEK_SET);
-    rc = read(fd, rom->data, rom->datasize);
 
-    //theuema
-    //printf("((((((()))))))) apply crypt in rom_add_file: %zx, dataptr: %zx, size: %zu\n", addr, rom->data, rom->datasize);
-    //apply_crypt(addr, rom->data, rom->datasize, "rom_add_file");
+
+    // *todo* theuema try to encrypt file with buffer
+/*    uint8_t *buf = g_malloc(rom->datasize);
+    rc = read(fd, buf, rom->datasize);
+    apply_crypt(addr, buf, rom->datasize, "rom_add_file");
+    memcpy(rom->data, buf, rom->datasize);
+    g_free(buf);*/
+
+    // don't use this line if we encrypt
+    rc = read(fd, rom->data, rom->datasize);
 
     if (rc != rom->datasize) {
         fprintf(stderr, "rom: file %-20s: read error: rc=%d (expected %zd)\n",
@@ -1007,10 +1013,16 @@ MemoryRegion *rom_add_blob(const char *name, const void *blob, size_t len,
     rom->datasize = len;
     rom->data     = g_malloc0(rom->datasize);
 
-    //theuema
-    //apply_crypt(addr, blob, len, "rom_add_blob");
+    //*todo* theuema try to encrypt blob with buffer
+/*    uint8_t *buf = g_malloc(rom->datasize);
+    memcpy(buf, blob, len);
+    apply_crypt(addr, buf, len, "rom_add_blob");
+    memcpy(rom->data, buf, len);
+    g_free(buf);*/
 
+    // don't use this line if we encrypt
     memcpy(rom->data, blob, len);
+
     rom_insert(rom);
     if (fw_file_name && fw_cfg) {
         char devpath[100];

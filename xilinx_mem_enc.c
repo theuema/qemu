@@ -25,8 +25,9 @@
 #include "exec/memory-internal.h"
 #include "exec/ram_addr.h"
 
-#include "trace-root.h"
-
+#define DEBUG_MSG 1
+#define DEBUG_MSG_BIG 0
+#define TEST_DEC 1
 
 static int cpu_index(void)
 {
@@ -49,20 +50,30 @@ uint64_t key_b = 0x2123456789AACDEF;
 /* For memory blocks bigger than 8 byte i use bytewise en/decryption.
  * Mainly used for encrypting kernel, dtb and bootloader via loader.c
  */
-void crypt_big(hwaddr addr, uint8_t *data, size_t size){
+void crypt_big(hwaddr addr, size_t *data, size_t size, const char* type){
     __uint128_t key = ((__uint128_t)key_a << 64) | key_b;
     unsigned int size_of_key = sizeof(key);
     unsigned int lower4bits = addr & 0xF;
-
+    uint8_t *data_ptr = data;
+    #if DEBUG_MSG
+    printf("~ [DEBUG] START func: crypt_big();\n");
+    printf("~ [DEBUG] apply crypt on hwaddr: %lx; 64bit of Data: 0x%lx; Type: %s; Size: %d\n",
+           addr, (uint64_t)*data, type, size);
+    #endif
     uint8_t curr_byte_key = 0;
     for(int byte_nr = lower4bits; byte_nr < lower4bits+size; byte_nr++){
         curr_byte_key = (key >> (8*(byte_nr % size_of_key))) & 0xff;
-        if(byte_nr-lower4bits == 0)
-            printf("********** in crypt_big curr databyte = %zx, curr_byte_key = %zx;"
-                           "lower4bits = %d\n", *data, curr_byte_key, lower4bits);
-        *data ^= curr_byte_key;
-        data++;
+        #if DEBUG_MSG_BIG
+        printf("~ [BYTE] crypt_big() curr_data_byte = %x, curr_byte_key = %x; byte_nr = %d\n",
+               *data_ptr, curr_byte_key, byte_nr);
+        #endif
+        *data_ptr ^= curr_byte_key;
+        data_ptr++;
     }
+    #if DEBUG_MSG
+    printf("~ [DEBUG] crypt_big() finish crypt: 64bit of Data: 0x%lx; Type: %s\n\n",
+           (uint64_t)*data);
+    #endif
 }
 
 /* Create specific data key
@@ -80,6 +91,12 @@ uint64_t get_data_key(unsigned int lower4bits, size_t size) {
         curr_byte_key = (key >> (8*(byte_nr % size_of_key))) & 0xff;
         data_key = (data_key << 8) | (uint64_t)curr_byte_key;
     }
+
+    #if DEBUG_MSG
+    printf("~ [DEBUG] START func: get_data_key();\n");
+    printf("~ [DEBUG] calculated data_key (before swap): %lx\n", data_key);
+    #endif
+
     switch (size) {
         case 1:
             return data_key;
@@ -102,35 +119,86 @@ uint64_t get_data_key(unsigned int lower4bits, size_t size) {
 void apply_crypt(hwaddr addr, size_t *data, size_t size, const char* type)
 {
 
-    if(addr < 0x8000000)
+        //  > 1GB due to memory mapped IO
+    if(addr > 0x3fffffff){
+        printf("~ [INFO] MMAP IO! No crypt.\n");
+        goto crypt_done;
+    }
+
+    // *TODO* delete condition
+    if(addr == 0x8000000 || addr == 0x100 || addr == 0x84e1000 || addr == 0x8000 || addr == 0x0)
+        printf("~ [INFO] one of my address: %lx type = %s\n", addr, type);
+
+    // *TODO* delete condition -no_read-
+    if(type == "mem_op_read")
         goto crypt_done;
 
-    printf("((((((()))))))) apply crypt: %zx, dataptr: %zx, size: %zu, type = %s\n", addr, data, size, type);
-
-    //if(size > 8) {
-        crypt_big(addr, (uint8_t*)data, size);
+    //crypt bigger data
+    if(size > 8) {
+        crypt_big(addr, data, size, type);
+    #if TEST_DEC
+        // test decrypt
+        uint64_t test_data = *data;
+        crypt_big(addr, &test_data, size, "test_decrypt");
         goto crypt_done;
-    //}
+    #else
+        goto crypt_done;
+    #endif
+   }
 
-    unsigned int lower4bits = addr & 0xF;   // lower 4 bits "enabled" via & mask
+    //crypt byte words of 1,2,4 or 8 byte length
+    unsigned int lower4bits = addr & 0xF;
     uint64_t data_key = get_data_key(lower4bits, size);
     assert(data_key != -1);
+
+    #if DEBUG_MSG
+        printf("~ [DEBUG] apply crypt to data: 0x%lx; type: %s\n",
+               (uint64_t)*data, type);
+        printf("~ [DEBUG] size: %d, hwaddr: %lx\n",
+               size, addr);
+    #endif
 
     // apply crypt to data
     switch (size) {
         case 1:
-            *data ^= (uint8_t)data_key;
+            *(uint8_t *)data ^= (uint8_t)data_key;
             break;
         case 2:
-            *data ^= (uint16_t)data_key;
+            *(uint16_t *)data ^= (uint16_t)data_key;
             break;
         case 4:
-            *data ^= (uint32_t)data_key;
+            *(uint32_t *)data ^= (uint32_t)data_key;
             break;
         case 8:
-            *data ^= data_key;
+            *(uint64_t *)data ^= data_key;
             break;
     }
+    #if DEBUG_MSG
+        printf("~ [DEBUG] finish crypt; data: 0x%lx;\n",
+               (uint64_t)*data);
+    #endif
+
+    #if TEST_DEC
+        // test decrypt
+        uint64_t test_data = *data;
+        // apply crypt to data
+        switch (size) {
+            case 1:
+                test_data ^= (uint8_t)data_key;
+                break;
+            case 2:
+                test_data ^= (uint16_t)data_key;
+                break;
+            case 4:
+                test_data ^= (uint32_t)data_key;
+                break;
+            case 8:
+                test_data ^= data_key;
+                break;
+        }
+        printf("~ [DEBUG] test decrypt finished; Data: 0x%lx;\n\n",
+               (uint64_t)test_data);
+    #endif
 
 crypt_done:
     return;
@@ -160,7 +228,7 @@ static uint64_t memory_region_ram_read(void *opaque,
 
     //THEUEMA -no trace-
     //trace_memory_region_ram_device_read(cpu_index(), mr, addr, data, size);
-    //apply_crypt(addr, &data, (size_t)size, "mem_op_read");
+    apply_crypt(addr, &data, (size_t)size, "mem_op_read");
     return data;
 }
 
@@ -169,7 +237,7 @@ static void memory_region_ram_write(void *opaque, hwaddr addr,
                                     uint64_t data, unsigned size)
 {
     MemoryRegion *mr = opaque;
-    //apply_crypt(addr, &data, (size_t)size, "mem_op_write");
+    apply_crypt(addr, &data, (size_t)size, "mem_op_write");
     //THEUEMA -no trace-
     //trace_memory_region_ram_device_write(cpu_index(), mr, addr, data, size);
 
