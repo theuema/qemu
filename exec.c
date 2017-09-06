@@ -29,6 +29,7 @@
 #if !defined(CONFIG_USER_ONLY)
 #include "hw/boards.h"
 #include "hw/xen/xen.h"
+#include "sysemu/xilinx_mem_enc.h" // theuema
 #endif
 #include "sysemu/kvm.h"
 #include "sysemu/sysemu.h"
@@ -70,7 +71,7 @@
 #ifndef _WIN32
 #include "qemu/mmap-alloc.h"
 // include happened automatically -> fprintf
-#include "include/qom/cpu.h"
+//#include "include/qom/cpu.h"
 
 #endif
 
@@ -2769,7 +2770,16 @@ static MemTxResult address_space_write_continue(AddressSpace *as, hwaddr addr,
         } else {
             /* RAM case */
             ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
-            memcpy(ptr, buf, l);
+
+            //theuema apply crypt
+            uint8_t *non_const_buf = g_malloc(l);
+            memcpy(non_const_buf, buf, l);
+            apply_crypt(addr1, (size_t *)non_const_buf, l, "address_space_write_continue_RAM_case");
+            memcpy(ptr, non_const_buf, l);
+            g_free(non_const_buf);
+
+            //theuema do not use line in case of encryption
+            //memcpy(ptr, buf, l);
             invalidate_and_set_dirty(mr, addr1, l);
         }
 
@@ -2812,6 +2822,17 @@ MemTxResult address_space_write(AddressSpace *as, hwaddr addr, MemTxAttrs attrs,
 
     return result;
 }
+
+// theuema: function used for address_space_read() in memory.h
+void* crypt_before_direct_memcpy(hwaddr addr1, void *ptr, int len){
+    //theuema apply crypt
+    uint8_t *non_const_buf = g_malloc(len);
+    memcpy(non_const_buf, ptr, len);
+    apply_crypt(addr1, (size_t *)non_const_buf, len, "crypt_before_direct_memcpy");
+    return (void*)non_const_buf;
+}
+
+
 
 /* Called within RCU critical section.  */
 MemTxResult address_space_read_continue(AddressSpace *as, hwaddr addr,
@@ -2860,7 +2881,16 @@ MemTxResult address_space_read_continue(AddressSpace *as, hwaddr addr,
         } else {
             /* RAM case */
             ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
-            memcpy(buf, ptr, l);
+
+            //theuema apply crypt
+            uint8_t *non_const_buf = g_malloc(l);
+            memcpy(non_const_buf, ptr, l);
+            apply_crypt(addr1, (size_t *)non_const_buf, l, "address_space_read_continue_RAM_case");
+            memcpy(buf, non_const_buf, l);
+            g_free(non_const_buf);
+
+            //do not use this line in case of encryption
+            //memcpy(buf, ptr, l);
         }
 
         if (release_lock) {
@@ -2934,8 +2964,8 @@ static inline void cpu_physical_memory_write_rom_internal(AddressSpace *as,
     MemoryRegion *mr;
 
     rcu_read_lock();
+    l = len;
     while (len > 0) {
-        l = len;
         mr = address_space_translate(as, addr, &addr1, &l, true);
 
         if (!(memory_region_is_ram(mr) ||
@@ -2945,14 +2975,21 @@ static inline void cpu_physical_memory_write_rom_internal(AddressSpace *as,
             /* ROM/RAM case */
             ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
             switch (type) {
-            case WRITE_DATA:
-                memcpy(ptr, buf, l);
+            case WRITE_DATA: ; // ";" empty statement because of compiler error // theuema apply crypt
+                uint8_t *non_const_buf = g_malloc(l);
+                memcpy(non_const_buf, buf, l);
+                apply_crypt(addr1, (size_t *)non_const_buf, l, "cpu_physical_memory_write_rom_internal");
+                memcpy(ptr, non_const_buf, l);
+                g_free(non_const_buf);
                 invalidate_and_set_dirty(mr, addr1, l);
                 break;
             case FLUSH_CACHE:
                 flush_icache_range((uintptr_t)ptr, (uintptr_t)ptr + l);
                 break;
             }
+            /* theuema case WRITE_DATA:
+               //do not use this memcpy in case of encrypting data
+               memcpy(ptr, buf, l);*/
         }
         len -= l;
         buf += l;

@@ -57,7 +57,6 @@
 #include "qemu/cutils.h"
 
 #include <zlib.h>
-#include "sysemu/xilinx_mem_enc.h"
 
 static int roms_loaded;
 
@@ -928,15 +927,11 @@ int rom_add_file(const char *file, const char *fw_dir,
     rom->data     = g_malloc0(rom->datasize);
     lseek(fd, 0, SEEK_SET);
 
+/*  theuema
+    thought this file is stored in my MR with g_malloc0;
+    but is not. do not encrypt file!
+    g_malloc0 just initializes allocated memory with zeros. */
 
-    // *todo* theuema try to encrypt file with buffer
-/*    uint8_t *buf = g_malloc(rom->datasize);
-    rc = read(fd, buf, rom->datasize);
-    apply_crypt(addr, buf, rom->datasize, "rom_add_file");
-    memcpy(rom->data, buf, rom->datasize);
-    g_free(buf);*/
-
-    // don't use this line if we encrypt
     rc = read(fd, rom->data, rom->datasize);
 
     if (rc != rom->datasize) {
@@ -1013,14 +1008,11 @@ MemoryRegion *rom_add_blob(const char *name, const void *blob, size_t len,
     rom->datasize = len;
     rom->data     = g_malloc0(rom->datasize);
 
-    //*todo* theuema try to encrypt blob with buffer
-/*    uint8_t *buf = g_malloc(rom->datasize);
-    memcpy(buf, blob, len);
-    apply_crypt(addr, buf, len, "rom_add_blob");
-    memcpy(rom->data, buf, len);
-    g_free(buf);*/
+/*  theuema
+    thought this blob is stored in my MR with g_malloc0;
+    but is not. do not encrypt file!
+    g_malloc0 just initializes allocated memory with zeros. */
 
-    // don't use this line if we encrypt
     memcpy(rom->data, blob, len);
 
     rom_insert(rom);

@@ -1632,6 +1632,8 @@ static inline bool memory_access_is_direct(MemoryRegion *mr, bool is_write)
     }
 }
 
+void* crypt_before_direct_memcpy(hwaddr addr1, void *ptr, int len);
+
 /**
  * address_space_read: read from an address space.
  *
@@ -1660,14 +1662,22 @@ MemTxResult address_space_read(AddressSpace *as, hwaddr addr, MemTxAttrs attrs,
             mr = address_space_translate(as, addr, &addr1, &l, false);
             if (len == l && memory_access_is_direct(mr, false)) {
                 ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
-                memcpy(buf, ptr, len);
+
+                //theuema apply crypt
+                void* decrypted_ptr = crypt_before_direct_memcpy(addr1, ptr, len);
+                memcpy(buf, decrypted_ptr, len);
+                g_free(decrypted_ptr);
+
+                //theuema do not use in case of encryption
+                //memcpy(buf, ptr, len);
             } else {
-                result = address_space_read_continue(as, addr, attrs, buf, len,
-                                                     addr1, l, mr);
+                // theuema crypt happens in function
+                result = address_space_read_continue(as, addr, attrs, buf, len, addr1, l, mr);
             }
             rcu_read_unlock();
         }
     } else {
+        // *todo* no encryption needed, calls address_space_read_continue?
         result = address_space_read_full(as, addr, attrs, buf, len);
     }
     return result;

@@ -27,8 +27,9 @@
 
 #define DEBUG_MSG 1
 #define DEBUG_MSG_BIG 0
-#define TEST_DEC 1
+#define TEST_DEC 0
 
+// for tracing
 static int cpu_index(void)
 {
     if (current_cpu) {
@@ -56,28 +57,32 @@ void crypt_big(hwaddr addr, size_t *data, size_t size, const char* type){
     unsigned int lower4bits = addr & 0xF;
     uint8_t *data_ptr = data;
     #if DEBUG_MSG
-    printf("~ [DEBUG] START func: crypt_big();\n");
-    printf("~ [DEBUG] apply crypt on hwaddr: %lx; 64bit of Data: 0x%lx; Type: %s; Size: %d\n",
-           addr, (uint64_t)*data, type, size);
+        if(type != "mem_op_read"){
+            printf("~ [DEBUG] START func: crypt_big();\n");
+            printf("~ [DEBUG] apply crypt on hwaddr: %lx; 64bit of Data: 0x%lx; Type: %s; Size: %d\n",
+                   addr, (uint64_t)*data, type, size);
+        }
     #endif
     uint8_t curr_byte_key = 0;
     for(int byte_nr = lower4bits; byte_nr < lower4bits+size; byte_nr++){
         curr_byte_key = (key >> (8*(byte_nr % size_of_key))) & 0xff;
         #if DEBUG_MSG_BIG
-        printf("~ [BYTE] crypt_big() curr_data_byte = %x, curr_byte_key = %x; byte_nr = %d\n",
-               *data_ptr, curr_byte_key, byte_nr);
+            printf("~ [BYTE] crypt_big() curr_data_byte = %x, curr_byte_key = %x; byte_nr = %d\n",
+                   *data_ptr, curr_byte_key, byte_nr);
         #endif
         *data_ptr ^= curr_byte_key;
         data_ptr++;
     }
     #if DEBUG_MSG
-    printf("~ [DEBUG] crypt_big() finish crypt: 64bit of Data: 0x%lx; Type: %s\n\n",
-           (uint64_t)*data);
+        if(type != "mem_op_read") {
+            printf("~ [DEBUG] crypt_big() finish crypt: 64bit of Data: 0x%lx; Type: %s\n\n",
+                   (uint64_t) * data, type);
+        }
     #endif
 }
 
 /* Create specific data key
- * Endianess is little endian (tested) -> read hex from right to left.
+ * Endianess is little endian (tested)
  * In test 8 byte key stored: efcdaa8967452321 when starting with byte 0
  * So i need to swap (bswap64/32/16) the bytes to have correct byte be encrypted
  * when i start > 8 i need modulo size_of_key for ring
@@ -93,8 +98,8 @@ uint64_t get_data_key(unsigned int lower4bits, size_t size) {
     }
 
     #if DEBUG_MSG
-    printf("~ [DEBUG] START func: get_data_key();\n");
-    printf("~ [DEBUG] calculated data_key (before swap): %lx\n", data_key);
+        printf("~ [DEBUG] START func: get_data_key();\n");
+        printf("~ [DEBUG] calculated data_key (before swap): %lx\n", data_key);
     #endif
 
     switch (size) {
@@ -118,23 +123,44 @@ uint64_t get_data_key(unsigned int lower4bits, size_t size) {
 
 void apply_crypt(hwaddr addr, size_t *data, size_t size, const char* type)
 {
-
-        //  > 1GB due to memory mapped IO
-    if(addr > 0x3fffffff){
-        printf("~ [INFO] MMAP IO! No crypt.\n");
+    //      > 1GB due to memory mapped IO > 0x3fffffff
+    if(addr > 0x2f000000 || addr < 0x84F0992){
+/*        FILE *f = fopen("/working/qemu/theuema_basic_tests/boot_success_addr_output_complete.txt", "a");
+        assert(f != NULL);
+        fprintf(f, "~ [No Crypt] addr: %lx; size: %d; type %s;\n", addr, size, type);
+        fclose(f);*/
+/*        if(addr > 0x2f000000){
+            FILE *fb = fopen("/working/qemu/theuema_basic_tests/boot_success_b0x2f000000_addr_output_bigger.txt", "a");
+            assert(fb != NULL);
+            fprintf(fb, "~ [No Crypt] addr: %lx; size: %d; type %s;\n", addr, size, type);
+            fclose(fb);
+        }*/
+/*        if(addr < 0x84F0992){
+            FILE *fs = fopen("/working/qemu/theuema_basic_tests/boot_success_s0x84F0992_addr_output_smaller.txt", "a");
+            assert(fs != NULL);
+            fprintf(fs, "~ [No Crypt] addr: %lx; size: %d; type %s;\n", addr, size, type);
+            fclose(fs);
+        }*/
+        //printf("~ [INFO] addr: %lx; size: %d; type %s; No crypt.\n", addr, size, type);
         goto crypt_done;
     }
 
-    // *TODO* delete condition
-    if(addr == 0x8000000 || addr == 0x100 || addr == 0x84e1000 || addr == 0x8000 || addr == 0x0)
-        printf("~ [INFO] one of my address: %lx type = %s\n", addr, type);
+/*    FILE *f = fopen("/working/qemu/theuema_basic_tests/boot_success_addr_output_complete.txt", "a");
+    assert(f != NULL);
+    fprintf(f, "~ [Crypt] addr: %lx; size: %d; type %s;\n", addr, size, type);
+    fclose(f);
 
-    // *TODO* delete condition -no_read-
-    if(type == "mem_op_read")
-        goto crypt_done;
+    FILE *fc = fopen("/working/qemu/theuema_basic_tests/addr_output_crypt_only.txt", "a");
+    assert(fc != NULL);
+    fprintf(fc, "~ [Crypt] addr: %lx; size: %d; type %s;\n", addr, size, type);
+    fclose(fc);*/
+
+    // delete/don't use condition -no_read-
+/*    if(type == "mem_op_read")
+        goto crypt_done;*/
 
     //crypt bigger data
-    if(size > 8) {
+    //if(size > 8) {
         crypt_big(addr, data, size, type);
     #if TEST_DEC
         // test decrypt
@@ -144,7 +170,7 @@ void apply_crypt(hwaddr addr, size_t *data, size_t size, const char* type)
     #else
         goto crypt_done;
     #endif
-   }
+   //}
 
     //crypt byte words of 1,2,4 or 8 byte length
     unsigned int lower4bits = addr & 0xF;
@@ -226,7 +252,7 @@ static uint64_t memory_region_ram_read(void *opaque,
             break;
     }
 
-    //THEUEMA -no trace-
+    //theuema -no_trace-
     //trace_memory_region_ram_device_read(cpu_index(), mr, addr, data, size);
     apply_crypt(addr, &data, (size_t)size, "mem_op_read");
     return data;
@@ -238,7 +264,8 @@ static void memory_region_ram_write(void *opaque, hwaddr addr,
 {
     MemoryRegion *mr = opaque;
     apply_crypt(addr, &data, (size_t)size, "mem_op_write");
-    //THEUEMA -no trace-
+
+    //theuema -no_trace-
     //trace_memory_region_ram_device_write(cpu_index(), mr, addr, data, size);
 
     switch (size) {
@@ -259,7 +286,7 @@ static void memory_region_ram_write(void *opaque, hwaddr addr,
 
 /* theuema
  * use of endianess
- * most likely ENDIANESS seems to be little endian
+ * ENDIANESS is little endian
  * see cpu.h line 2347
  * All code access in ARM is little endian, and there are no loaders
  * doing swaps that need to be reversed
@@ -298,7 +325,6 @@ void memory_region_ram_init_ops(MemoryRegion *mr,
                            uint64_t size,
                            Error **errp)
 {
-    //printf("** memory_region_ram_init_ops(): now: memory_region_init()\n");
     memory_region_init(mr, owner, name, size);
     mr->ram = true;
     mr->ram_device = true;
@@ -308,26 +334,13 @@ void memory_region_ram_init_ops(MemoryRegion *mr,
     mr->destructor = mem_destructor_ram;
     mr->dirty_log_mask = tcg_enabled() ? (1 << DIRTY_MEMORY_CODE) : 0;
     mr->ram_block = qemu_ram_alloc(size, mr, errp);
-    //printf("** memory_region_ram_init_ops(): ram-alloc complete. ram_device size: %d\n", size);
 }
-
-/* THEUEMA
- * siehe Aufruf in exec.c line 2525 von memory_region_init_io bezüglich opaque parameter:
- * memory_region_init_io(&io_mem_notdirty, NULL, &notdirty_mem_ops, NULL,NULL, UINT64_MAX);
- * wird er nicht zwangsläufig gebraucht?
- *
- * Aufruf von memory_region_init_io Bspl. in sm502.c line 1424 (gute Vorlage!)
- */
 
 void memory_region_allocate_system_enc_memory_region(MemoryRegion *mr, Object *owner,
                                                      const char *name,
                                                      uint64_t ram_size)
 {
-
-    //printf("** In memory_region_allocate_system_enc_memory_region()!\n");
-    //printf("** Will now call memory_region_ram_init_ops()!\n");
     memory_region_ram_init_ops(mr, owner, &ram_mem_ops, mr, name, ram_size, &error_fatal);
-
 }
 
 
