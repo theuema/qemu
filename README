@@ -1,3 +1,13 @@
+THEUEMA README
+==============
+
+This is a slightly changed version of the famous QEMU emulator and virtualizer. 
+The goal is to implement a memory encryption module within a xilinx_zynq_a9 virtualization.
+There are still several difficulties to solve. 
+It is for (my)educational use only. 
+
+
+
          QEMU README
          ===========
 
