@@ -12,6 +12,8 @@
 #include "hw/boards.h"
 #include <zlib.h>
 
+void crypt_boot_data(int size, int start_addr);
+
 void crypt_big(hwaddr addr, size_t *data, size_t size, const char* type);
 
 uint64_t get_data_key(unsigned int lower4bits, size_t size);

@@ -2998,6 +2998,41 @@ static inline void cpu_physical_memory_write_rom_internal(AddressSpace *as,
     rcu_read_unlock();
 }
 
+/*  theuema
+    this function encrypts boot data, written unencrypted by bootloader during boot process;
+    this data lies approx somewhere between 0x2f005000 - 0x3fb00000
+*/
+void crypt_boot_data(int len, int start_addr){
+
+    hwaddr l = 1;
+    uint8_t *ptr;
+    hwaddr addr1;
+    MemoryRegion *mr;
+
+    //todo, stop vm?? IMHO no read_lock needed tue to the fact that i already hold this lock
+    //todo, read lock enough or pause vm?
+    //rcu_read_lock();
+    //l = len;
+    while (len > 0) {
+        mr = address_space_translate(&address_space_memory, start_addr, &addr1, &l, true);
+        ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
+
+        // theuema try direct encryption w/o buffer due to a size of 285212671 bytes
+                    //uint8_t *non_const_buf = g_malloc(l);
+                    //memcpy(non_const_buf, buf, l);
+        crypt_big(addr1, (size_t *)ptr, l, "crypt_boot_data > 0x2f003000");
+                    //memcpy(ptr, non_const_buf, l);
+                    //g_free(non_const_buf);
+
+        len -= l;
+        start_addr += l;
+    }
+
+    //rcu_read_unlock();
+    printf("+++++++++++ finished with encryption of data in crypt_boot_data()\n");
+    //printf("+++++++++++ finished doing nothing in crypt_boot_data()\n");
+}
+
 /* used for ROM loading : can write in RAM and ROM */
 void cpu_physical_memory_write_rom(AddressSpace *as, hwaddr addr,
                                    const uint8_t *buf, int len)

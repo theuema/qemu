@@ -24,10 +24,13 @@
 
 #include "exec/memory-internal.h"
 #include "exec/ram_addr.h"
+#include "include/exec/memory.h"
 
-#define DEBUG_MSG 1
+#define DEBUG_MSG 0
 #define DEBUG_MSG_BIG 0
 #define TEST_DEC 0
+#define GEN_CRYPT_OUTPUT 0
+#define GEN_NON_CRYPT_OUTPUT 0
 
 // for tracing
 static int cpu_index(void)
@@ -42,14 +45,22 @@ static int cpu_index(void)
  * direct usage of __uint128_t doesn't work
  * so i go with 2x64bit and a cast
  */
+
 //   15 14 13 12 11 10 9  8  7  6  5  4  3  2  1  0   // tested byte_nr
 // 0x11 23 45 67 89 AB CD EF 21 23 45 67 89 AA CD EF  // curr_key 128bit
-uint64_t key_a = 0x1123456789ABCDEF;
-uint64_t key_b = 0x2123456789AACDEF;
+/*uint64_t key_a = 0x1123456789ABCDEF;
+uint64_t key_b = 0x2123456789AACDEF;*/
 
+// only working "key", see information in line 150
+uint64_t key_a = 0x0000000000000000;
+uint64_t key_b = 0x0000000000000000;
+
+// crypt my uncrypted block indicator variable
+bool not_encrypted = true;
 
 /* For memory blocks bigger than 8 byte i use bytewise en/decryption.
  * Mainly used for encrypting kernel, dtb and bootloader via loader.c
+ * Not doing it right now due to line 142
  */
 void crypt_big(hwaddr addr, size_t *data, size_t size, const char* type){
     __uint128_t key = ((__uint128_t)key_a << 64) | key_b;
@@ -123,44 +134,48 @@ uint64_t get_data_key(unsigned int lower4bits, size_t size) {
 
 void apply_crypt(hwaddr addr, size_t *data, size_t size, const char* type)
 {
-    //      > 1GB due to memory mapped IO > 0x3fffffff
-    if(addr > 0x2f000000 || addr < 0x84F0992){
-/*        FILE *f = fopen("/working/qemu/theuema_basic_tests/boot_success_addr_output_complete.txt", "a");
-        assert(f != NULL);
-        fprintf(f, "~ [No Crypt] addr: %lx; size: %d; type %s;\n", addr, size, type);
-        fclose(f);*/
-/*        if(addr > 0x2f000000){
-            FILE *fb = fopen("/working/qemu/theuema_basic_tests/boot_success_b0x2f000000_addr_output_bigger.txt", "a");
-            assert(fb != NULL);
-            fprintf(fb, "~ [No Crypt] addr: %lx; size: %d; type %s;\n", addr, size, type);
-            fclose(fb);
-        }*/
-/*        if(addr < 0x84F0992){
-            FILE *fs = fopen("/working/qemu/theuema_basic_tests/boot_success_s0x84F0992_addr_output_smaller.txt", "a");
-            assert(fs != NULL);
-            fprintf(fs, "~ [No Crypt] addr: %lx; size: %d; type %s;\n", addr, size, type);
-            fclose(fs);
-        }*/
-        //printf("~ [INFO] addr: %lx; size: %d; type %s; No crypt.\n", addr, size, type);
-        goto crypt_done;
-    }
-
-/*    FILE *f = fopen("/working/qemu/theuema_basic_tests/boot_success_addr_output_complete.txt", "a");
-    assert(f != NULL);
-    fprintf(f, "~ [Crypt] addr: %lx; size: %d; type %s;\n", addr, size, type);
-    fclose(f);
-
-    FILE *fc = fopen("/working/qemu/theuema_basic_tests/addr_output_crypt_only.txt", "a");
+/*    FILE *fc = fopen("/working/qemu/theuema_crypt_log/address_log.txt", "a");
     assert(fc != NULL);
     fprintf(fc, "~ [Crypt] addr: %lx; size: %d; type %s;\n", addr, size, type);
     fclose(fc);*/
+    // no crypt on roms and >1GB due to memory mapped IO >0x3fffffff
+    if(addr <= 0x84F0992 || addr > 0x3fffffff){
+        #if GEN_NON_CRYPT_OUTPUT
+            FILE *fn = fopen("/working/qemu/theuema_crypt_log/non_crypt_address_log.txt", "a");
+            assert(fn != NULL);
+            fprintf(fn, "~ [No Crypt] addr: %lx; size: %d; type %s;\n", addr, size, type);
+            fclose(fn);
+        #endif
+        goto crypt_done;
+    }
 
-    // delete/don't use condition -no_read-
-/*    if(type == "mem_op_read")
-        goto crypt_done;*/
+    // tried to encrypt the boot data afterwards;
+    // i do get the problem to have a wrong instruction executed after executing this code with any key except 0 (see log files);
+    // so therefore i guess some important stuff is overwritten?
+    // or maybe i run into problems with the TB-Cache -> was not able to disable the cache;
+    // maybe cpu_exec_nocache() useful?
+    if(not_encrypted && addr >= 0x2f000000){
+        int start_addr = 0x2f003000;
+        int end_addr = 0x3fffffff;
+
+        // useless with a key of 0; this should encrypt stuff written while booting which therefore is not recognized by the mem_ops
+        // enable this for testing with a different key;
+        //crypt_boot_data(end_addr-start_addr, start_addr);
+        not_encrypted = false;
+        // since the data in data_var is still correct we can return it directly w/o decrypting
+        goto crypt_done;
+    }
+
+    #if GEN_CRYPT_OUTPUT
+        FILE *fc = fopen("/working/qemu/theuema_crypt_log/address_log.txt", "a");
+        assert(fc != NULL);
+        fprintf(fc, "~ [Crypt] addr: %lx; size: %d; type %s;\n", addr, size, type);
+        fclose(fc);
+    #endif
+
 
     //crypt bigger data
-    //if(size > 8) {
+    if(size > 8) {
         crypt_big(addr, data, size, type);
     #if TEST_DEC
         // test decrypt
@@ -170,7 +185,7 @@ void apply_crypt(hwaddr addr, size_t *data, size_t size, const char* type)
     #else
         goto crypt_done;
     #endif
-   //}
+   }
 
     //crypt byte words of 1,2,4 or 8 byte length
     unsigned int lower4bits = addr & 0xF;
