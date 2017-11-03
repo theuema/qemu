@@ -1,0 +1,77 @@
+#!/bin/bash
+
+# has to be placed in qemu root folder!
+
+E_BADARGS=65
+QEMUROOT="~/Working/qemu"
+X86SMMUFOLDER="/home/theuema/Working/qemu/build_x86_64_debug/x86_64-softmmu"
+ARM64USRFOLDER="/home/theuema/Working/qemu/build_arm_64_debug/aarch64-linux-user"
+ZYNQDEPLOY="/working/build_yocto_pyro/tmp/deploy/images/qemu-zynq7"
+TESTFOLDER="/working/qemu/theuema_basic_tests"
+
+arg=$1
+
+if [[ $arg == "--help" ]]
+then
+  echo "----------------------------------------------------------------------"
+  echo "build/clean commands: $0 x86 | arm64 | clean"
+  echo ""
+  echo "gdb QEMU ZEDBOARD debug commands: $0 zedqemudebug break_function_name"
+  echo ""
+  echo "AARCH64 usermode compile commands: $0 aarch64 filename.c"
+  echo ""
+  echo "static zedboard ivocation with QEMU console: $0 runzedboard"
+  echo ""
+  echo "|| builds are stored in: build_x86_64_debug | build_arm_64_debug"
+  echo "|| store files to compile in ${TESTFOLDER}"
+  echo "----------------------------------------------------------------------"
+  exit $E_BADARGS
+else
+  param=$2
+fi
+
+if [[ $arg == "x86" ]]
+then
+  rm -rf build_x86_64_debug
+  mkdir -p build_x86_64_debug; cd build_x86_64_debug
+  ../configure --python=/usr/bin/python2 --enable-trace-backend=simple --disable-werror --disable-strip --enable-debug --enable-debug-info --target-list="x86_64-softmmu, x86_64-linux-user"
+  make -j16
+elif [[ $arg == "clean" ]]
+then
+  rm -rf build_x86_64_debug
+  rm -rf build_arm_64_debug
+else
+  if [[ $arg == "arm64" ]]
+  then
+    rm -rf build_arm_64_debug
+    mkdir -p build_arm_64_debug; cd build_arm_64_debug
+    ../configure --python=/usr/bin/python2 --target-list="aarch64-softmmu, aarch64-linux-user" --enable-debug --enable-fdt --enable-sdl --disable-werror
+# removed target: microblazeel-softmmu
+#--extra-cflags="-DXILINX_SPIPS_ERR_DEBUG=2 \
+#                    -DM25P80_ERR_DEBUG=2 \
+#                    -DNAND_ERR_DEBUG=1 \
+#                    -DARASAN_NFC_ERR_DEBUG=1 \
+#                    -DSDHC_DEBUG \
+#                    -DFDT_GENERIC_UTIL_ERR_DEBUG=2 \
+#		    -DCONFIG_FDT"
+    make -j16
+  elif [[ $arg == "qemudebug" ]] && [[ $param ]]
+  then
+    cd /tmp/sweb;
+    gdb ${X86SMMUFOLDER}/qemu-system-x86_64 -ex "break $param" -ex "run -m 8M -cpu qemu64 -drive file=~/Working/SWEB_64_lukifork/SWEB-flat.vmdk,index=0,media=disk,format=raw -debugcon stdio -no-reboot" -ex "tui enable"
+  else
+    if [[ $arg == "startsweb64" ]]
+    then
+      cd /tmp/sweb
+       ${X86SMMUFOLDER}/qemu-system-x86_64 -m 8M -cpu qemu64 -drive file=SWEB-flat.vmdk,index=0,media=disk,format=raw -debugcon stdio -no-reboot
+    elif [[ $arg == "aarch64" ]] && [[ $param ]]
+    then
+      cd ${TESTFOLDER}
+      aarch64-linux-gnu-gcc -Wall -o test $param
+      cd ${QEMUROOT}
+    else
+      echo "Unknown arguments. See --help for usage information!"
+      exit $E_BADARGS
+    fi
+  fi
+fi

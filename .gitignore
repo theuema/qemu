@@ -1,3 +1,9 @@
+build_*
+theuema*
+.idea/
+CMakeLists.txt
+cmake-build-debug/
+
 /config-devices.*
 /config-all-devices.*
 /config-all-disas.*
