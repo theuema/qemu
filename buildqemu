@@ -3,8 +3,8 @@
 # has to be placed in qemu root folder!
 
 E_BADARGS=65
-QEMUROOT="~/Working/qemu"
-X86SMMUFOLDER="/home/theuema/Working/qemu/build_x86_64_debug/x86_64-softmmu"
+QEMUROOT="/home/theuema/Working/qemu"
+QEMUX86FOLDER="/home/theuema/Working/qemu/build_x86_64_debug/x86_64-softmmu"
 ARM64USRFOLDER="/home/theuema/Working/qemu/build_arm_64_debug/aarch64-linux-user"
 ZYNQDEPLOY="/working/build_yocto_pyro/tmp/deploy/images/qemu-zynq7"
 TESTFOLDER="/working/qemu/theuema_basic_tests"
@@ -16,13 +16,16 @@ then
   echo "----------------------------------------------------------------------"
   echo "build/clean commands: $0 x86 | arm64 | clean"
   echo ""
-  echo "gdb QEMU ZEDBOARD debug commands: $0 zedqemudebug break_function_name"
+  echo "gdb QEMU debug commands: $0 qemudebugsweb qemu_break_function_name"
+  echo "(will start sweb emulation in qemu)"
   echo ""
-  echo "AARCH64 usermode compile commands: $0 aarch64 filename.c"
-  echo ""
-  echo "static zedboard ivocation with QEMU console: $0 runzedboard"
+  echo "start QEMU SWEB session: $0 startqemu"
+  echo "(therefore build sweb in /tmp/sweb)"
   echo ""
   echo "|| builds are stored in: build_x86_64_debug | build_arm_64_debug"
+  echo ""
+  echo "-not used-------------------------------------------------------------"
+  echo "AARCH64 usermode compile commands: $0 aarch64 filename.c"
   echo "|| store files to compile in ${TESTFOLDER}"
   echo "----------------------------------------------------------------------"
   exit $E_BADARGS
@@ -55,15 +58,15 @@ else
 #                    -DFDT_GENERIC_UTIL_ERR_DEBUG=2 \
 #		    -DCONFIG_FDT"
     make -j16
-  elif [[ $arg == "qemudebug" ]] && [[ $param ]]
+  elif [[ $arg == "qemudebugsweb" ]] && [[ $param ]]
   then
-    cd /tmp/sweb;
-    gdb ${X86SMMUFOLDER}/qemu-system-x86_64 -ex "break $param" -ex "run -m 8M -cpu qemu64 -drive file=~/Working/SWEB_64_lukifork/SWEB-flat.vmdk,index=0,media=disk,format=raw -debugcon stdio -no-reboot" -ex "tui enable"
+    cd /tmp/sweb
+    gdb ${QEMUX86FOLDER}/qemu-system-x86_64 -ex "break $param" -ex "run -m 8M -cpu qemu64 -drive file=SWEB-flat.vmdk,index=0,media=disk,format=raw -debugcon stdio -no-reboot" -ex "tui enable"
   else
-    if [[ $arg == "startsweb64" ]]
+    if [[ $arg == "startsweb" ]]
     then
       cd /tmp/sweb
-       ${X86SMMUFOLDER}/qemu-system-x86_64 -m 8M -cpu qemu64 -drive file=SWEB-flat.vmdk,index=0,media=disk,format=raw -debugcon stdio -no-reboot
+       ${QEMUX86FOLDER}/qemu-system-x86_64 -m 8M -cpu qemu64 -drive file=SWEB-flat.vmdk,index=0,media=disk,format=raw -debugcon stdio -no-reboot
     elif [[ $arg == "aarch64" ]] && [[ $param ]]
     then
       cd ${TESTFOLDER}
