@@ -38,6 +38,8 @@
 #include "qemu/option.h"
 #include "qemu/config-file.h"
 
+#include "sysemu/memory_rw_mod.h"
+
 QemuOptsList qemu_numa_opts = {
     .name = "numa",
     .implied_opt_name = "type",
@@ -429,7 +431,9 @@ static void allocate_system_memory_nonnuma(MemoryRegion *mr, Object *owner,
         exit(1);
 #endif
     } else {
-        memory_region_init_ram(mr, owner, name, ram_size, &error_fatal);
+        //theuema rw_mod
+        //memory_region_init_ram(mr, owner, name, ram_size, &error_fatal);
+        memory_region_init_rw_mod(mr, owner, name, ram_size, &error_fatal);
     }
     vmstate_register_ram_global(mr);
 }
