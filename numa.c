@@ -39,6 +39,7 @@
 #include "qemu/config-file.h"
 
 #include "sysemu/memory_rw_mod.h"
+#include "sysemu/cache_controller.h"
 
 QemuOptsList qemu_numa_opts = {
     .name = "numa",
@@ -431,7 +432,7 @@ static void allocate_system_memory_nonnuma(MemoryRegion *mr, Object *owner,
         exit(1);
 #endif
     } else {
-        //theuema rw_mod
+        //theuema_mod rw_mod
         //memory_region_init_ram(mr, owner, name, ram_size, &error_fatal);
         memory_region_init_rw_mod(mr, owner, name, ram_size, &error_fatal);
     }
@@ -442,6 +443,15 @@ void memory_region_allocate_system_memory(MemoryRegion *mr, Object *owner,
                                           const char *name,
                                           uint64_t ram_size)
 {
+    /*  theuema_info
+     *  First create the corresponding Cache;
+     *  Depends on system memory size;
+     *  Created here due to the fact that this function is used to allocate
+     *  ram on every platform i have seen in qemu.
+     *  Therefore the Cache will be available everywhere;
+     */
+    MemCache__create(ram_size);
+
     uint64_t addr = 0;
     int i;
 

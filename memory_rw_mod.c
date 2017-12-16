@@ -15,6 +15,7 @@
 #include "qemu/config-file.h"
 
 #include "sysemu/memory_rw_mod.h"
+#include "sysemu/cache_controller.h"
 #include "exec/memory.h"
 
 #include "exec/memory-internal.h"
@@ -26,7 +27,7 @@
  *
  * When ram initialization-functions
  * memory_region_allocate_system_memory & allocate_system_memory_nonnuma in
- * numa.c where routed over function "TODO: give function name",
+ * numa.c where routed over function memory_region_init_rw_mod,
  * this function(s) is/are called on every memory rw-access to this specific allocated ram area;
  * Additional info: Running 32/64bit full emulation systems with qemu such as SWEB,
  * ram area is allocated via allocate_system_memory_nonnuma -> memory_region_init_ram;
@@ -35,6 +36,13 @@
 static uint64_t memory_region_ram_read(void *opaque,
                                        hwaddr addr, unsigned size)
 {
+    // theuema_cache
+    // check hit or miss;
+    bool check = check_hit_miss(addr, size);
+
+    // if miss delay;
+
+    // execute read access;
     MemoryRegion *mr = opaque;
     uint64_t data = (uint64_t)~0;
 

@@ -12,13 +12,6 @@
 
 //#include <zlib.h> // size_t?
 
-static uint64_t memory_region_ram_read(void *opaque,
-                                       hwaddr addr, unsigned size);
-
-static void memory_region_ram_write(void *opaque, hwaddr addr,
-                                    uint64_t data, unsigned size);
-
-static void mem_destructor_ram(MemoryRegion *mr);
 
 void memory_region_init_rw_mod(MemoryRegion *mr,
                                Object *owner,
