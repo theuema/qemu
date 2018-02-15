@@ -14,11 +14,14 @@
 
 struct MemCache;                    // forward declared for encapsulation
 typedef struct MemCache MemCache;
-void MemCache__init(MemCache* self, uint32_t size, uint8_t ways, uint64_t* c_ptr);
+void MemCache__init(MemCache* self, uint32_t size, uint8_t ways, uint64_t* c_ptr,
+                    uint8_t nbits, uint8_t kbits);
 void MemCache__create(uint64_t mem_size);
 
 //void MemCache__destroy(MemCache* self); // theuema todo: wo destructen?
 
-bool check_hit_miss(hwaddr addr, unsigned size);
+void check_hit_miss(hwaddr addr, unsigned size);
+void cache_miss(unsigned size, bool valid_bit, uint64_t* cache_tag_ptr, uint64_t addr_tag);
+void add_or_replace_data(unsigned size, bool valid_bit, uint64_t* cache_tag_ptr, uint64_t addr_tag);
 
 #endif //QEMU_CACHE_CONTROLLER_H
