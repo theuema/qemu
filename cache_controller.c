@@ -2,6 +2,7 @@
 // Created by theuema on 11/15/17.
 //
 
+#include <pthread.h>        // get mutex
 #include "qemu/osdep.h"
 #include "exec/cpu-common.h"
 #include "qom/cpu.h"
@@ -24,39 +25,49 @@
 /* remove global variable?
  * theuema todo: store in machine obj? need to change MemCache__create ivocation from numa.c to pc.c?
  */
-MemCache* cache; //
-#define CACHE_BLOCK_SIZE 64 // maximum 65536 byte
-#define DATA_HANDLING 0
+MemCache* cache;
+#define CACHE_BLOCK_SIZE 64
+#define CACHE_SIZE_SGIG 128       // cache size in kb (main memory <1GB)
+#define CACHE_SIZE_BGIG (8*1024)  // cache size in kb (main memory >1GB)
+#define CACHE_WAYS 16
+
+struct CacheLine{
+    bool valid;
+    uint64_t tag;
+    uint8_t cache_data[CACHE_BLOCK_SIZE];
+    pthread_mutex_t cache_line_mutex;
+};
 
 struct MemCache {
     uint32_t size;
     uint8_t ways;
     uint8_t kbits;
     uint8_t nbits;
-    uint64_t* cache_ptr;
     uint16_t block_size;
-
+    CacheLine* cache_line_ptr;
+    pthread_mutex_t cache_mutex;
 };
 
 // constructor (OOP style);
-void MemCache__init(MemCache* self, uint32_t size, uint8_t ways, uint64_t* c_ptr,
+void MemCache__init(MemCache* self, uint32_t size, uint8_t ways, CacheLine* line_ptr,
                     uint8_t nbits, uint8_t kbits) {
     self->size = size;
     self->ways = ways;
     self->kbits = kbits;
     self->nbits = nbits;
-    self->cache_ptr = c_ptr;
+    self->cache_line_ptr = line_ptr;
+    pthread_mutex_init(&self->cache_mutex, NULL);
 }
 
-// allocation & initialization (equivalent to "new MemCache(args)");
+// cache allocation & initialization
 void MemCache__create(uint64_t mem_size) {
     uint32_t size;
     uint8_t ways;
-    uint64_t* c_ptr;
-    uint8_t nbits;
+    CacheLine* line_ptr;
     cache = (MemCache*) g_malloc(sizeof(MemCache));
     cache->block_size = CACHE_BLOCK_SIZE;
     uint8_t kbits = log(cache->block_size) / log(2); // offset for addressing each byte in cache line
+    uint8_t nbits;
 
     /* allocate cache here;
      *
@@ -71,77 +82,89 @@ void MemCache__create(uint64_t mem_size) {
      *  cache size: 8MB   -> 131.072 lines / 16 ways = 8192 lines per array
      */
 
-    // system memory smaller than 1GB;
+    // system memory <1GB -> direct cache mapping
     if(mem_size < 0x40000000){
-        size = 128*1024;
-        nbits = log(size/cache->block_size) / log(2); // size of bits needed for cache INDEX
-        c_ptr = (uint64_t*) g_malloc((size/cache->block_size) * (8+cache->block_size));
+        size = CACHE_SIZE_SGIG*1024;
         ways = NULL;
-    }else{
-        assert(false); // theuema todo: big cache (8MB) with 16 way associativity
+        nbits = log(size/cache->block_size) / log(2); // size of bits needed for CACHE INDEX
+        line_ptr = (CacheLine*) g_malloc((size/cache->block_size) * (sizeof(CacheLine)));
+    }else {
+    // system memory >1GB -> associative cache mapping
+        size = CACHE_SIZE_BGIG*1024;
+        ways = CACHE_WAYS;
+        nbits = log(size/cache->block_size) / log(2); // size of bits needed for SET INDEX
+        //todo: big cache (8MB) with 16 way associativity allocation
     };
-
     // struct initialization;
-    MemCache__init(cache, size, ways, c_ptr, nbits, kbits);
+    MemCache__init(cache, size, ways, line_ptr, nbits, kbits);
 }
 
 void add_or_replace_data(unsigned size, bool valid_bit,
-                         uint64_t* cache_tag_ptr, uint64_t addr_tag){
+                         CacheLine* cache_tag_ptr, uint64_t addr_tag){
 
-    if(!valid_bit){                 // if NOT valid bit, simply store the tag to the cache
-        addr_tag |= 1ULL << 63;                             // set valid bit to addr_tag
-        *(uint64_t *)cache_tag_ptr = (uint64_t)addr_tag;    // store actual TAG to cache
-        goto replacement_done;
-    }
 
     // theuema todo: here comes the replacement algorithm because valid bit is true
-
     replacement_done:
         return;
 }
 
 
-void cache_miss(unsigned size, bool valid_bit, uint64_t* cache_tag_ptr, uint64_t addr_tag){
-    //theuema todo: do the timing stuff!
+void direct_cache_miss(unsigned size, bool valid_bit, CacheLine *cache_line, uint64_t addr_tag){
+    //todo: timing stuff sufficient?
+    struct timespec ts;
+    ts.tv_sec = 0;
+    ts.tv_nsec = 100000;
+    nanosleep(&ts, NULL);
 
-    add_or_replace_data(size, valid_bit, cache_tag_ptr, addr_tag);
+    cache_line->tag = addr_tag;
+    if(!valid_bit)
+        valid_bit = true;
 
+    pthread_mutex_unlock(&cache_line->cache_line_mutex);
 }
 
 void check_hit_miss(hwaddr addr, unsigned size){
-#if DATA_HANDLING
-    //code to get actual data from cache block
-
-    // lower kbits is to address kbytes of data in cache line
-    // static for 64byte -> 6bits
-    // uint8_t cache_data_mask = (uint8_t)-1 >> 2;
-
-    // variable offset for diff cache line size
-    uint64_t var_cache_data_mask = (uint64_t)0;
-    for(int l = 0; l < cache->kbits; l++) {
-        var_cache_data_mask |= 1ULL << l;
-    }
-    uint16_t cache_data_offset = addr & var_cache_data_mask;
-#endif
-    // get actual cache index by cutting off klast bits & TAG
-    uint64_t cache_index = (((addr >> cache->kbits) << (sizeof(addr)*8-cache->nbits))
-            >> (sizeof(addr)*8-cache->nbits));
-
     uint64_t addr_tag = addr >> (cache->kbits+cache->nbits);
-    uint64_t* cache_tag_ptr = cache->cache_ptr+cache_index;
 
-    // in fact check for a cache miss and perform adding/replacing or timing actions
-    uint8_t first_byte = *(uint64_t *)cache_tag_ptr;    // theuema todo: check if getting first byte correctly
-    if(!(first_byte >> (sizeof(uint8_t)-1) & 1U)){      // check if valid bit NOT set then cache miss
-        cache_miss(size, false, cache_tag_ptr, addr_tag);
+    if(cache->ways)
+        goto associative;
+
+    /* direct cache mapping */
+    pthread_mutex_lock(&cache->cache_mutex);
+    // get actual cache line index by cutting off klast bits & TAG
+    uint64_t cache_line_index = (((addr >> cache->kbits) << (sizeof(addr)*8-cache->nbits))
+            >> (sizeof(addr)*8-cache->nbits));
+    CacheLine* curr_cache_line = cache->cache_line_ptr+cache_line_index;
+
+    // in fact: check if a cache miss occurs
+
+    // actual line NOT valid                                        -> cache miss
+    if(!curr_cache_line->valid){
+    // when no valid bit, line never touched -> init mutex
+    pthread_mutex_init(&curr_cache_line->cache_line_mutex, NULL);
+    // grab a line mutex, release cache mutex
+    pthread_mutex_lock(&curr_cache_line->cache_line_mutex);
+    pthread_mutex_unlock(&cache->cache_mutex);
+        direct_cache_miss(size, false, curr_cache_line, addr_tag);
         goto check_done;
     }
-    uint64_t cache_tag = *(uint64_t *)cache_tag_ptr << 1;   // cut off valid bit to get actual tag stored in cache
-    if(addr_tag != cache_tag){                              // check if tags are NOT congruent then cache miss
-        cache_miss(size, true, cache_tag_ptr, addr_tag);
+
+    // grab a line mutex, release cache mutex
+    pthread_mutex_lock(&curr_cache_line->cache_line_mutex);
+    pthread_mutex_unlock(&cache->cache_mutex);
+    // actual addr_TAG != cache_line_TAG                            -> cache miss
+    if(!(addr_tag == curr_cache_line->tag)){
+        direct_cache_miss(size, true, curr_cache_line, addr_tag);
         goto check_done;
     }
+    // actual cache line is valid and TAGs are congruent            -> cache hit
+    pthread_mutex_unlock(&curr_cache_line->cache_line_mutex);
+    goto check_done;
+
+    /* associative cache mapping */
+    associative:
+    //todo: here my associative code
 
     check_done:
-        return;
+    return;
 }
