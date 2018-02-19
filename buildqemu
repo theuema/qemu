@@ -37,7 +37,7 @@ if [[ $arg == "x86" ]]
 then
   rm -rf build_x86_64_debug
   mkdir -p build_x86_64_debug; cd build_x86_64_debug
-  ../configure --python=/usr/bin/python2 --enable-trace-backend=simple --disable-werror --disable-strip --enable-debug --enable-debug-info --target-list="x86_64-softmmu, x86_64-linux-user"
+  ../configure --python=/usr/bin/python2 --enable-trace-backend=simple --disable-werror --disable-strip --enable-debug --enable-debug-info --target-list="x86_64-softmmu"
   make -j16
 elif [[ $arg == "clean" ]]
 then
@@ -48,7 +48,7 @@ else
   then
     rm -rf build_arm_64_debug
     mkdir -p build_arm_64_debug; cd build_arm_64_debug
-    ../configure --python=/usr/bin/python2 --target-list="aarch64-softmmu, aarch64-linux-user" --enable-debug --enable-fdt --enable-sdl --disable-werror
+    ../configure --python=/usr/bin/python2 --target-list="aarch64-softmmu" --enable-debug --enable-fdt --enable-sdl --disable-werror
 # removed target: microblazeel-softmmu
 #--extra-cflags="-DXILINX_SPIPS_ERR_DEBUG=2 \
 #                    -DM25P80_ERR_DEBUG=2 \

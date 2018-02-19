@@ -3,6 +3,7 @@ theuema*
 .idea/
 CMakeLists.txt
 cmake-build-debug/
+.DS_Store
 
 /config-devices.*
 /config-all-devices.*
