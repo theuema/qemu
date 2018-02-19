@@ -44,6 +44,7 @@ struct CacheLine{
     uint64_t accessed; // counter for LRU
 };
 
+/* associative cache mapping */
 struct CacheSet{
     bool used;
     uint32_t lines;
@@ -139,7 +140,7 @@ void direct_cache_miss(unsigned size, bool valid_bit, CacheLine *cache_line, uin
     ts.tv_nsec = 100000;
     nanosleep(&ts, NULL);
 
-    // store TAG to Cache and set valid bit
+    // store TAG to CACHE and set valid bit
     cache_line->tag = addr_tag;
     if(!valid_bit)
         cache_line->valid = true;
@@ -178,7 +179,7 @@ void check_hit_miss(hwaddr addr, unsigned size){
     uint64_t addr_tag = addr >> (cache->kbits+cache->nbits);
     CacheLine* cache_line;
 
-    if(cache->ways != NULL)
+    if(cache->ways)
         goto associative;
 
 /*****************************/
@@ -248,12 +249,7 @@ void check_hit_miss(hwaddr addr, unsigned size){
         if(cache_line->valid && cache_line->tag == addr_tag){
             // actual cache line is valid and TAGs are congruent            -> cache hit
 #if LRU
-            uint64_t prev_accessed = cache_line->accessed;
             cache_line->accessed++;
-            if(cache_line->accessed < prev_accessed){
-                // todo: handle uint64_t overflow
-                assert(false);
-            }
 #endif
             pthread_mutex_unlock(&cache_set->cache_set_mutex);
             goto check_done;

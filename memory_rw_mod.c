@@ -86,7 +86,7 @@ static void memory_region_ram_write(void *opaque, hwaddr addr,
 }
 
 /* Specified ram_mem_ops
- * TODO: check endianness
+ *
  */
 static const MemoryRegionOps ram_mem_ops = {
         .read = memory_region_ram_read,
