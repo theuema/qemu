@@ -1,0 +1,80 @@
+#!/bin/bash/tmp/sweb
+
+# has to be placed in qemu root folder!
+
+E_BADARGS=65
+QEMUROOT="/home/theuema/Working/qemu"
+QEMUX86FOLDER="/home/theuema/Working/qemu/build_x86_64_debug/x86_64-softmmu"
+ARM64USRFOLDER="/home/theuema/Working/qemu/build_arm_64_debug/aarch64-linux-user"
+ZYNQDEPLOY="/working/build_yocto_pyro/tmp/deploy/images/qemu-zynq7"
+TESTFOLDER="/working/qemu/theuema_basic_tests"
+SWEBFOLDER="/tmp/sweb"
+MACQEMUX86FOLDER="~/Working/qemu/build_x86_64_debug/x86_64-softmmu"
+MACLINUXFOLDER="~/Working/LinuxVM"
+MACQEMUROOTFOLDER="~/Working/qemu"
+
+arg=$1
+
+if [[ $arg == "--help" ]]
+then
+  echo "----------------------------------------------------------------------"
+  echo "build/clean commands: $0 x86 | arm64 | clean"
+  echo ""
+  echo "gdb QEMU debug commands: $0 qemudebuglinux qemu_break_function_name"
+  echo "(will start linux full system emulation in qemu)"
+  echo ""
+  echo "start QEMU LINUX session: $0 startqemu"
+  echo "(therefore have correct named linux vm file in MACLINUXFOLDER)"
+  echo ""
+  echo "|| builds are stored in: build_x86_64_debug | build_arm_64_debug"
+  echo ""
+  exit $E_BADARGS
+else
+  param=$2
+fi
+
+if [[ $arg == "x86" ]]
+then
+  rm -rf build_x86_64_debug
+  mkdir -p build_x86_64_debug; cd build_x86_64_debug
+  ../configure --python=/usr/bin/python2 --enable-trace-backend=simple --disable-werror --disable-strip --enable-debug --enable-debug-info --target-list="x86_64-softmmu, x86_64-linux-user"
+  make -j16
+elif [[ $arg == "clean" ]]
+then
+  rm -rf build_x86_64_debug
+  rm -rf build_arm_64_debug
+else
+  if [[ $arg == "arm64" ]]
+  then
+    rm -rf build_arm_64_debug
+    mkdir -p build_arm_64_debug; cd build_arm_64_debug
+    ../configure --python=/usr/bin/python2 --target-list="aarch64-softmmu, aarch64-linux-user" --enable-debug --enable-fdt --enable-sdl --disable-werror
+# removed target: microblazeel-softmmu
+#--extra-cflags="-DXILINX_SPIPS_ERR_DEBUG=2 \
+#                    -DM25P80_ERR_DEBUG=2 \
+#                    -DNAND_ERR_DEBUG=1 \
+#                    -DARASAN_NFC_ERR_DEBUG=1 \
+#                    -DSDHC_DEBUG \
+#                    -DFDT_GENERIC_UTIL_ERR_DEBUG=2 \
+#		    -DCONFIG_FDT"
+    make -j16
+  elif [[ $arg == "qemudebuglinux" ]] && [[ $param ]]
+  then
+    cd ${MACLINUXFOLDER}
+    gdb ${MACQEMUX86FOLDER}/qemu-system-x86_64
+    if [[ $arg == "startlinux" ]]
+    then
+      cd ${MACLINUXFOLDER}
+      ${MACQEMUX86FOLDER}/qemu-system-x86_64
+      cd ${MACQEMUROOT}
+    elif [[ $arg == "not_used"]]
+    then
+      cd ${MACLINUXFOLDER}
+      ${MACQEMUX86FOLDER}/qemu-system-x86_64
+      cd ${MACQEMUROOT}
+    else
+      echo "Unknown arguments. See --help for usage information!"
+      exit $E_BADARGS
+    fi
+  fi
+fi
