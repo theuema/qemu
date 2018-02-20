@@ -10,8 +10,6 @@
 #include "sysemu/sysemu.h"
 #include "sysemu/hostmem.h"
 
-//#include <zlib.h> // size_t?
-
 
 void memory_region_init_rw_mod(MemoryRegion *mr,
                                Object *owner,
@@ -19,6 +17,7 @@ void memory_region_init_rw_mod(MemoryRegion *mr,
                                uint64_t ram_size,
                                Error **error_fatal);
 
-
+void enable_cache_simulation(void);
+void disable_cache_simulation(void);
 
 #endif //QEMU_MEMORY_RW_MOD_H

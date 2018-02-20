@@ -14,7 +14,7 @@
 #include "qmp-commands.h"
 #include "hw/mem/pc-dimm.h"
 #include "qemu/config-file.h"
-
+#include <math.h>
 #include "sysemu/cache_controller.h"
 #include "exec/memory.h"
 

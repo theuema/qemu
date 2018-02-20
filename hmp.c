@@ -36,6 +36,7 @@
 #include "qemu-io.h"
 #include "qemu/cutils.h"
 #include "qemu/error-report.h"
+#include "sysemu/memory_rw_mod.h"
 
 #ifdef CONFIG_SPICE
 #include <spice/enums.h>
@@ -906,6 +907,18 @@ void hmp_stop(Monitor *mon, const QDict *qdict)
 void hmp_system_reset(Monitor *mon, const QDict *qdict)
 {
     qmp_system_reset(NULL);
+}
+
+/*theuema cache simulation*/
+void hmp_cache_enable(Monitor *mon, const QDict *qdict)
+{
+    enable_cache_simulation();
+
+}
+
+void hmp_cache_disable(Monitor *mon, const QDict *qdict)
+{
+    disable_cache_simulation();
 }
 
 void hmp_system_powerdown(Monitor *mon, const QDict *qdict)
