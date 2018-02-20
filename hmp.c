@@ -36,7 +36,7 @@
 #include "qemu-io.h"
 #include "qemu/cutils.h"
 #include "qemu/error-report.h"
-#include "sysemu/memory_rw_mod.h"
+#include "sysemu/cache_controller.h"
 
 #ifdef CONFIG_SPICE
 #include <spice/enums.h>

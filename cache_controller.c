@@ -23,6 +23,7 @@
 
 /* global? todo: store in machine obj? need to change MemCache__create ivocation from numa.c to pc.c? */
 MemCache* cache;
+bool cache_simulation_active = true;
 
 /*****************************/
 /* define cache properties     */
@@ -36,6 +37,10 @@ MemCache* cache;
 
 /* choose replacement algorithm */
 #define LRU 1
+
+void enable_cache_simulation(void){cache_simulation_active = true;}
+void disable_cache_simulation(void){cache_simulation_active = false;}
+bool cache_simulation(void){return cache_simulation_active;}
 
 struct CacheLine{
     bool valid;

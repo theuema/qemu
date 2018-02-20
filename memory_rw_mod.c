@@ -21,11 +21,6 @@
 #include "exec/memory-internal.h"
 #include "exec/ram_addr.h"
 
-bool cache_simulation_active = false;
-
-void enable_cache_simulation(void){cache_simulation_active = true;}
-void disable_cache_simulation(void){cache_simulation_active = false;}
-
 /* memory_region_ram_read & memory_region_ram_write
  *
  * When ram initialization-functions
@@ -42,7 +37,7 @@ static uint64_t memory_region_ram_read(void *opaque,
     // theuema_cache
     // hwaddr // typedef uint64_t hwaddr;
     // check hit or miss;
-    if(cache_simulation_active)
+    if(cache_simulation)
         check_hit_miss(addr, size);
 
     // if miss delay;
