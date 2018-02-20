@@ -76,7 +76,7 @@ void MemCache__init(MemCache* self, uint32_t size, uint8_t ways, CacheLine* line
 
 // cache allocation & initialization
 void MemCache__create(uint64_t mem_size) {
-    uint32_t size = CACHE_SIZE*1024;;
+    uint32_t size = CACHE_SIZE*1024;
     cache = (MemCache*) g_malloc(sizeof(MemCache));
     cache->block_size = CACHE_BLOCK_SIZE;
     uint8_t kbits = log(cache->block_size) / log(2); // offset for addressing each byte in cache line
@@ -104,11 +104,11 @@ void MemCache__create(uint64_t mem_size) {
 
     /* direct cache mapping */
     if(mem_size < 0x40000000){
-        ways = NULL;
-        sets = NULL;
+        ways = 0;
+        sets = 0;
         set_ptr = NULL;
-        lines = (size/cache->block_size) * (sizeof(CacheLine));
-        line_ptr = (CacheLine*) g_malloc(lines);
+        lines = size/cache->block_size;
+        line_ptr = (CacheLine*) g_malloc(lines * (sizeof(CacheLine)));
 
         CacheLine* curr_line_ptr;
         for(uint32_t i = 0; i < lines; i++){
@@ -116,17 +116,17 @@ void MemCache__create(uint64_t mem_size) {
             pthread_mutex_init(&curr_line_ptr->cache_line_mutex, NULL);
         }
     }else {
-    /* associative cache mapping */
+    /* associative cache mapping */ // (8*1024*1024) / 64 / 16
         line_ptr = NULL;
         ways = CACHE_WAYS;
         lines = ways;
-        sets = ((size/cache->block_size) * (sizeof(CacheSet)) / ways);
-        set_ptr = (CacheSet*) g_malloc(sets);
+        sets = (size/cache->block_size) / ways;
+        set_ptr = (CacheSet*) g_malloc(sets * (sizeof(CacheSet)));
 
         CacheSet* curr_set_ptr;
         for(uint8_t i = 0; i < sets; i++) {
             curr_set_ptr = set_ptr+i;
-            curr_set_ptr->cache_line_ptr = (CacheLine*) g_malloc(ways);
+            curr_set_ptr->cache_line_ptr = (CacheLine*) g_malloc(lines);
             curr_set_ptr->lines = ways;
             pthread_mutex_init(&curr_set_ptr->cache_set_mutex, NULL);
             CacheLine* curr_line_ptr;
