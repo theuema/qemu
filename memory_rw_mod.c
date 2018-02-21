@@ -29,7 +29,6 @@
  * this function(s) is/are called on every memory rw-access to this specific allocated ram area;
  * Additional info: Running 32/64bit full emulation systems with qemu such as SWEB,
  * ram area is allocated via allocate_system_memory_nonnuma -> memory_region_init_ram;
- * KVM support and linux kernels also _should_ be possible (TODO: test KVM and linux-emulation);
  */
 static uint64_t memory_region_ram_read(void *opaque,
                                        hwaddr addr, unsigned size)
@@ -37,7 +36,7 @@ static uint64_t memory_region_ram_read(void *opaque,
     // theuema_cache
     // hwaddr // typedef uint64_t hwaddr;
     // check hit or miss;
-    if(cache_simulation)
+    if(cache_simulation())
         check_hit_miss(addr, size);
 
     // if miss delay;
