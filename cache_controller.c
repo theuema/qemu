@@ -69,7 +69,7 @@ void MemCache__init(MemCache* self, uint32_t size, uint8_t ways, CacheLine* line
 
 // cache allocation & initialization
 void MemCache__create(uint64_t mem_size) {
-    uint32_t size = CACHE_SIZE*1024;
+    uint32_t size = CACHE_SIZE * 1024;
     cache = (MemCache*) g_malloc(sizeof(MemCache));
     cache->block_size = CACHE_BLOCK_SIZE;
     uint8_t kbits = log(cache->block_size) / log(2); // offset for addressing each byte in cache line
@@ -85,14 +85,14 @@ void MemCache__create(uint64_t mem_size) {
     /* allocate cache here;
      *
      * #direct cache
-     *  cache size formula: (kb * 1024) / (sizeof(cache_line)); cache line is 64bytes;
+     *  cache size formula: (kb * 1024) / (sizeof(cache_line)); // 64bytes;
      *  cache size: 128kb -> 2048  lines
      *  cache size: 512kb -> 8192  lines
      *  cache size: 2MB   -> 32786 lines
      *
      * #associated cache
      *  cache size formula: ((kb * 1024) / (sizeof(cache_line)) / association); association = ways;
-     *  cache size: 8MB   -> 131.072 lines / 16 ways = 8192 lines per array
+     *  cache size: 8MB   -> 131.072 lines / 16 ways = 8192 sets
      */
 
     /* direct cache mapping */
@@ -114,18 +114,18 @@ void MemCache__create(uint64_t mem_size) {
         line_ptr = NULL;
         ways = CACHE_WAYS;
         lines = ways;
-        nbits = log(size/cache->block_size/ways) / log(2); // size of bits needed for set index
+        nbits = log((size/cache->block_size) / ways) / log(2); // size of bits needed for set index
         sets = (size/cache->block_size) / ways;
         set_ptr = (CacheSet*) g_malloc(sets * (sizeof(CacheSet)));
 
         CacheSet* curr_set_ptr;
-        for(uint8_t i = 0; i < sets; i++) {
+        for(uint32_t i = 0; i < sets; i++) {
             curr_set_ptr = set_ptr+i;
             curr_set_ptr->cache_line_ptr = (CacheLine*) g_malloc(lines * (sizeof(CacheLine)));
             curr_set_ptr->lines = ways;
             pthread_mutex_init(&curr_set_ptr->cache_set_mutex, NULL);
             CacheLine* curr_line_ptr;
-            for(uint32_t n = 0; n < ways; n++){
+            for(uint8_t n = 0; n < ways; n++){
                 curr_line_ptr = curr_set_ptr->cache_line_ptr+n;
                 pthread_mutex_init(&curr_line_ptr->cache_line_mutex, NULL);
             }

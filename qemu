@@ -11,19 +11,21 @@ arg=$1
 
 if [[ $arg == "--help" ]]; then
   echo "----------------------------------------------------------------------"
-  echo "build/clean QEMU commands: $0 x86 | clean"
+  echo "build/clean QEMU commands: $0 buildx86 | clean"
   echo ""
   echo "Info: To use debugging & simulation commands, following paths must be set: "
-  echo "      Specify SWEB buildfolder-path variable. Current path: $SWEBFOLDER"
-  echo "      Specify Linux Distribution QCOW2 disk image file. Current File: $LINUXIMG"
+  echo "      Specify SWEB buildfolder-path variable.
+              Current path: $SWEBFOLDER"
+  echo "      Specify Linux Distribution QCOW2 disk image file.
+              Current File: $LINUXIMG"
   echo ""
   echo "--- Start cache simulation commands ---"
-  echo "Start SWEB QEMU command: $0 startqemusweb"
-  echo "Start Linux Distribution QEMU command $0 startqemulinux"
+  echo "Start SWEB QEMU command:                  $0 startsweb"
+  echo "Start Linux Distribution QEMU command:    $0 startlinux"
   echo ""
   echo "--- Fast cache debugging commands ---"
-  echo "GDB SWEB QEMU debug command: $0 qemudebugsweb qemu_break_function_name"
-  echo "GDB Linux Distribution QEMU debug command: $0 qemudebuglinux qemu_break_function_name"
+  echo "GDB SWEB QEMU debug command:              $0 debugsweb qemu_break_function_name"
+  echo "GDB Linux Distro QEMU debug command:      $0 debuglinux qemu_break_function_name"
   echo ""
   echo ""
   echo "Softmmu build folder: $QEMUX86FOLDER"
@@ -33,7 +35,7 @@ else
   param=$2
 fi
 
-if [[ $arg == "x86" ]]; then
+if [[ $arg == "buildx86" ]]; then
   rm -rf build_x86_64_debug
   mkdir -p build_x86_64_debug; cd build_x86_64_debug
   ../configure --python=/usr/bin/python2 --enable-trace-backend=simple --disable-werror --disable-strip --enable-debug --enable-debug-info --target-list="x86_64-softmmu"
@@ -42,14 +44,14 @@ elif [[ $arg == "clean" ]]; then
   rm -rf build_x86_64_debug
   rm -rf build_arm_64_debug
 else
-  if [[ $arg == "qemudebugsweb" ]] && [[ $param ]]; then
+  if [[ $arg == "debugsweb" ]] && [[ $param ]]; then
     gdb ${QEMUX86FOLDER}/qemu-system-x86_64 -ex "break $param" -ex "run -m 8M -cpu qemu64 -drive file=${SWEBFOLDER}/SWEB-flat.vmdk,index=0,media=disk,format=raw -debugcon stdio -no-reboot" -ex "tui enable"
-  elif [[ $arg == "qemudebuglinux" ]] && [[ $param ]]; then
+  elif [[ $arg == "debuglinux" ]] && [[ $param ]]; then
     gdb ${QEMUX86FOLDER}/qemu-system-x86_64 -ex "break $param" -ex "run -m 2048 -cpu qemu64 -hda ${LINUXIMG} -debugcon stdio -no-reboot" -ex "tui enable"
   else
-    if [[ $arg == "startqemusweb" ]]; then
+    if [[ $arg == "startsweb" ]]; then
       ${QEMUX86FOLDER}/qemu-system-x86_64 -m 8M -cpu qemu64 -drive file=${SWEBFOLDER}/SWEB-flat.vmdk,index=0,media=disk,format=raw -debugcon stdio -no-reboot
-    elif [[ $arg == "startqemulinux" ]]; then
+    elif [[ $arg == "startlinux" ]]; then
       ${QEMUX86FOLDER}/qemu-system-x86_64 -m 2048 -cpu qemu64 -hda ${LINUXIMG} -debugcon stdio -no-reboot
     else
       echo "Unknown arguments. See --help for usage information!"

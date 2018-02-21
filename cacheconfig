@@ -387,8 +387,8 @@ echo "Build qemu now? (y/n)"
 read build
 
 if [[ $build == "y" ]]; then
-    ./buildqemu clean
-    ./buildqemu x86
+    ./qemu clean
+    ./qemu buildx86
   else
     echo "----------------------------------------------------------------------"
     echo "Nothing built."
@@ -406,9 +406,9 @@ if [[ $start == "y" ]]; then
     echo "Start cache simulation in sweb [2]"
     read start_choice
     if [[ $start_choice == "1" ]]; then
-      ./buildqemu startqemulinux
+      ./qemu startlinux
     elif [[ $start_choice == "2" ]]; then
-      ./buildqemu startqemusweb
+      ./qemu startsweb
     else
       echo "----------------------------------------------------------------------"
       echo "Error: Wrong input"
