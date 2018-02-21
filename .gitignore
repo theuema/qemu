@@ -4,6 +4,7 @@ theuema*
 CMakeLists.txt
 cmake-build-debug/
 .DS_Store
+buildqemumac
 
 /config-devices.*
 /config-all-devices.*
