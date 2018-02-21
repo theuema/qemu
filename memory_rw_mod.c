@@ -113,7 +113,6 @@ static void mem_destructor_ram(MemoryRegion *mr)
  * allocate_system_memory_nonnuma & no mem_path is present;
  * We specify our own ram_mem_ops and additional properties
  * to our MemoryRegion;
- * TODO: try if full system emulation of linux also uses "nonnuma"
  */
 void memory_region_init_rw_mod(MemoryRegion *mr,
                                Object *owner,

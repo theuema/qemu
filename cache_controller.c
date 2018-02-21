@@ -23,7 +23,7 @@
 
 /* global? todo: store in machine obj? need to change MemCache__create ivocation from numa.c to pc.c? */
 MemCache* cache;
-bool cache_simulation_active = true;
+bool cache_simulation_active = false;
 
 /*****************************/
 /* define cache properties     */
@@ -131,7 +131,7 @@ void MemCache__create(uint64_t mem_size) {
         CacheSet* curr_set_ptr;
         for(uint8_t i = 0; i < sets; i++) {
             curr_set_ptr = set_ptr+i;
-            curr_set_ptr->cache_line_ptr = (CacheLine*) g_malloc(lines);
+            curr_set_ptr->cache_line_ptr = (CacheLine*) g_malloc(lines * (sizeof(CacheLine)));
             curr_set_ptr->lines = ways;
             pthread_mutex_init(&curr_set_ptr->cache_set_mutex, NULL);
             CacheLine* curr_line_ptr;
