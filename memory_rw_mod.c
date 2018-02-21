@@ -29,7 +29,6 @@
  * this function(s) is/are called on every memory rw-access to this specific allocated ram area;
  * Additional info: Running 32/64bit full emulation systems with qemu such as SWEB,
  * ram area is allocated via allocate_system_memory_nonnuma -> memory_region_init_ram;
- * KVM support and linux kernels also _should_ be possible (TODO: test KVM and linux-emulation);
  */
 static uint64_t memory_region_ram_read(void *opaque,
                                        hwaddr addr, unsigned size)
@@ -37,7 +36,7 @@ static uint64_t memory_region_ram_read(void *opaque,
     // theuema_cache
     // hwaddr // typedef uint64_t hwaddr;
     // check hit or miss;
-    if(cache_simulation)
+    if(cache_simulation())
         check_hit_miss(addr, size);
 
     // if miss delay;
@@ -113,7 +112,6 @@ static void mem_destructor_ram(MemoryRegion *mr)
  * allocate_system_memory_nonnuma & no mem_path is present;
  * We specify our own ram_mem_ops and additional properties
  * to our MemoryRegion;
- * TODO: try if full system emulation of linux also uses "nonnuma"
  */
 void memory_region_init_rw_mod(MemoryRegion *mr,
                                Object *owner,

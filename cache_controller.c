@@ -21,10 +21,6 @@
 #include "exec/memory-internal.h"
 #include "exec/ram_addr.h"
 
-/* global? todo: store in machine obj? need to change MemCache__create ivocation from numa.c to pc.c? */
-MemCache* cache;
-bool cache_simulation_active = true;
-
 /*****************************/
 /* define cache properties     */
 /* values must be a power of 2 */
@@ -34,9 +30,12 @@ bool cache_simulation_active = true;
 #define CACHE_WAYS 16
 #define MISS_LATENCY 100000     // latency of cache miss
 #define DIRECT_CACHE 1          // switch between direct and associative cache
-
+#define CACHE_SIMULATION 0
 /* choose replacement algorithm */
 #define LRU 1
+
+MemCache* cache;
+bool cache_simulation_active = CACHE_SIMULATION;
 
 void enable_cache_simulation(void){cache_simulation_active = true;}
 void disable_cache_simulation(void){cache_simulation_active = false;}
@@ -108,7 +107,7 @@ void MemCache__create(uint64_t mem_size) {
      */
 
     /* direct cache mapping */
-    if(mem_size < 0x40000000){
+    if(DIRECT_CACHE){
         ways = 0;
         sets = 0;
         set_ptr = NULL;
@@ -131,7 +130,7 @@ void MemCache__create(uint64_t mem_size) {
         CacheSet* curr_set_ptr;
         for(uint8_t i = 0; i < sets; i++) {
             curr_set_ptr = set_ptr+i;
-            curr_set_ptr->cache_line_ptr = (CacheLine*) g_malloc(lines);
+            curr_set_ptr->cache_line_ptr = (CacheLine*) g_malloc(lines * (sizeof(CacheLine)));
             curr_set_ptr->lines = ways;
             pthread_mutex_init(&curr_set_ptr->cache_set_mutex, NULL);
             CacheLine* curr_line_ptr;
