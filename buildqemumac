@@ -10,7 +10,7 @@ E_BADARGS=65
 #TESTFOLDER="/working/qemu/theuema_basic_tests"
 #SWEBFOLDER="/tmp/sweb"
 MACQEMUX86FOLDER="/Users/theuema/Working/qemu/build_x86_64_debug/x86_64-softmmu"
-MACLINUXFOLDER="/Users/theuema/Working/debian"
+MACLINUXFOLDER="/Users/theuema/Working/linux"
 MACQEMUROOTFOLDER="/Users/theuema/Working/qemu"
 
 arg=$1
@@ -61,12 +61,12 @@ else
   elif [[ $arg == "qemudebuglinux" ]] && [[ $param ]]
   then
     cd ${MACLINUXFOLDER}
-    gdb ${MACQEMUX86FOLDER}/qemu-system-x86_64 -ex "break $param" -ex "run -m 2048 -cpu qemu64 -hda ${MACLINUXFOLDER}/debian-9.3.0-amd64-netinst.img -debugcon stdio -no-reboot" -ex "tui enable"
+    gdb ${MACQEMUX86FOLDER}/qemu-system-x86_64 -ex "break $param" -ex "run -m 2048 -cpu qemu64 -hda ${MACLINUXFOLDER}/ubuntu-16.04.3-server-amd64.img -debugcon stdio -no-reboot" -ex "tui enable"
   else
     if [[ $arg == "startlinux" ]]
     then
-      cd ${MACLINUXFOLDER}
-      ${MACQEMUX86FOLDER}/qemu-system-x86_64 -m 512 -cpu qemu64 -hda ${MACLINUXFOLDER}/debian-9.3.0-amd64-netinst.img -debugcon stdio -no-reboot
+      cd ${MACLINUXFOLDER} # additional flags: -cpu qemu64 -debugcon stdio -no-reboot
+      ${MACQEMUX86FOLDER}/qemu-system-x86_64 -m 512 -hda ${MACLINUXFOLDER}/ubuntu-16.04.3-server-amd64.img
     elif [[ $arg == "not_used" ]]
     then
       cd ${MACLINUXFOLDER}
