@@ -20,23 +20,12 @@
 
 #include "exec/memory-internal.h"
 #include "exec/ram_addr.h"
-
-/*****************************/
-/* define cache properties     */
-/* values must be a power of 2 */
-/*****************************/
-#define CACHE_BLOCK_SIZE 64
-#define CACHE_SIZE 128          // (8*1024) //8MB // cache size in kb
-#define CACHE_WAYS 16
-#define MISS_LATENCY 100000     // latency of cache miss
-#define DIRECT_CACHE 1          // switch between direct and associative cache
-#define CACHE_SIMULATION 0
-/* choose replacement algorithm */
-#define LRU 1
+#include "sysemu/cache_configuration.h"
 
 MemCache* cache;
 bool cache_simulation_active = CACHE_SIMULATION;
 
+/* functions used by hmp-commands to control cache via qemu monitor*/
 void enable_cache_simulation(void){cache_simulation_active = true;}
 void disable_cache_simulation(void){cache_simulation_active = false;}
 bool cache_simulation(void){return cache_simulation_active;}
@@ -84,7 +73,7 @@ void MemCache__create(uint64_t mem_size) {
     cache = (MemCache*) g_malloc(sizeof(MemCache));
     cache->block_size = CACHE_BLOCK_SIZE;
     uint8_t kbits = log(cache->block_size) / log(2); // offset for addressing each byte in cache line
-    uint8_t nbits = log(size/cache->block_size) / log(2); // size of bits needed for line/set index
+    uint8_t nbits;
     uint32_t lines;
     uint32_t sets;
     /* direct cache */
@@ -111,6 +100,7 @@ void MemCache__create(uint64_t mem_size) {
         ways = 0;
         sets = 0;
         set_ptr = NULL;
+        nbits = log(size/cache->block_size) / log(2); // size of bits needed for line index
         lines = size/cache->block_size;
         line_ptr = (CacheLine*) g_malloc(lines * (sizeof(CacheLine)));
 
@@ -120,10 +110,11 @@ void MemCache__create(uint64_t mem_size) {
             pthread_mutex_init(&curr_line_ptr->cache_line_mutex, NULL);
         }
     }else {
-    /* associative cache mapping */ // (8*1024*1024) / 64 / 16
+    /* associative cache mapping */
         line_ptr = NULL;
         ways = CACHE_WAYS;
         lines = ways;
+        nbits = log(size/cache->block_size/ways) / log(2); // size of bits needed for set index
         sets = (size/cache->block_size) / ways;
         set_ptr = (CacheSet*) g_malloc(sets * (sizeof(CacheSet)));
 

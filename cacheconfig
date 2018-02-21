@@ -1,0 +1,421 @@
+#!/bin/bash
+
+# has to be placed in qemu root folder!
+
+E_EXIT=65
+HEADERFOLDER="include/sysemu/"
+power2() { echo "x=l($1)/l(2); scale=0; 2^((x+0.5)/1)" | bc -l; };
+
+echo "----------------------------------------------------------------------"
+echo "Choose between cache configurations:"
+echo "---                           |     ---"
+echo "Configuration [1]:            |     Configuration [2]:"
+echo "CACHE_BLOCK_SIZE 64 byte      |     CACHE_BLOCK_SIZE 64 byte"
+echo "CACHE_SIZE 128 kb             |     CACHE_SIZE 128 kb"
+echo "CACHE_WAYS 16                 |     CACHE_WAYS 0"
+echo "MISS_LATENCY 100000 ns        |     MISS_LATENCY 100000 ns"
+echo "CACHE_TYPE associative        |     CACHE_TYPE direct"
+echo "---                           |     ---"
+echo "Configuration [3]:            |     Configuration [4]:"
+echo "CACHE_BLOCK_SIZE 256 byte     |     CACHE_BLOCK_SIZE 256 byte"
+echo "CACHE_SIZE 128 kb             |     CACHE_SIZE 128 kb"
+echo "CACHE_WAYS 16                 |     CACHE_WAYS 0"
+echo "MISS_LATENCY 100000 ns        |     MISS_LATENCY 100000 ns"
+echo "CACHE_TYPE associative        |     CACHE_TYPE direct"
+echo "---                           |     ---"
+echo "Configuration [5]:            |     Configuration [6]:"
+echo "CACHE_BLOCK_SIZE 64 byte      |     CACHE_BLOCK_SIZE 64 byte"
+echo "CACHE_SIZE 8 MB               |     CACHE_SIZE 8 MB"
+echo "CACHE_WAYS 16                 |     CACHE_WAYS 0"
+echo "MISS_LATENCY 100000 ns        |     MISS_LATENCY 100000 ns"
+echo "CACHE_TYPE associative        |     CACHE_TYPE direct"
+echo "---                           |     ---"
+echo "Configuration [7]:            |     Configuration [8]:"
+echo "CACHE_BLOCK_SIZE 512 byte     |     CACHE_BLOCK_SIZE 512 byte"
+echo "CACHE_SIZE 8 MB               |     CACHE_SIZE 8 MB"
+echo "CACHE_WAYS 16                 |     CACHE_WAYS 0"
+echo "MISS_LATENCY 100000 ns        |     MISS_LATENCY 100000 ns"
+echo "CACHE_TYPE associative        |     CACHE_TYPE direct"
+echo "---"
+echo "Configuration [9]:"
+echo ""
+echo "*Define custom configuration*"
+echo ""
+echo "----------------------------------------------------------------------"
+
+echo "Replacement algorithm for associative cache: LRU."
+echo "Choose configuration:"
+read configuration
+
+echo "----------------------------------------------------------------------"
+echo "Miss latency will be 100000ns by default."
+echo "Hit [Enter] for default or choose miss latency: (ns)"
+read misslatency
+
+if [[ $misslatency == "" ]]; then
+  misslatency="100000"
+else
+  re='^[0-9]+$'
+  if ! [[ $misslatency =~ $re ]]; then
+    echo "Error: Not a number." >&2;
+    echo "Exit script."
+    exit $E_EXIT
+  fi
+fi
+
+echo "----------------------------------------------------------------------"
+echo "Cache simulation can be enabled via qemu monitor (ctrl+alt+2)"
+echo "by using the command: 'cache_enable' and disabled "
+echo "by using the command: 'cache_disable'. "
+echo ""
+echo "If you want the simulation to be enabled by default type 'y'"
+echo "or hit [ENTER] to manually switch on the simulation in qemu monitor."
+echo "Choose:"
+read simulation
+
+if [[ $simulation == "y" ]]; then
+  simulation="1"
+else
+  simulation="0"
+fi
+
+#writing file:
+FILE="${HEADERFOLDER}cache_configuration.h"
+
+if [[ $configuration == "1" ]]; then
+/bin/cat <<EOM > $FILE
+#ifndef QEMU_CACHE_CONFIGURATION_H
+#define QEMU_CACHE_CONFIGURATION_H
+
+/*****************************/
+/* cache properties */
+/*****************************/
+
+#define CACHE_BLOCK_SIZE 64
+#define CACHE_SIZE 128
+#define CACHE_WAYS 16
+#define MISS_LATENCY $misslatency
+#define DIRECT_CACHE 0
+#define CACHE_SIMULATION $simulation
+
+/* choose replacement algorithm */
+#define LRU 1
+
+#endif //QEMU_CACHE_CONFIGURATION_H
+EOM
+fi
+
+if [[ $configuration == "2" ]]; then
+/bin/cat <<EOM > $FILE
+#ifndef QEMU_CACHE_CONFIGURATION_H
+#define QEMU_CACHE_CONFIGURATION_H
+
+/*****************************/
+/* cache properties */
+/*****************************/
+
+#define CACHE_BLOCK_SIZE 64
+#define CACHE_SIZE 128
+#define CACHE_WAYS 0
+#define MISS_LATENCY $misslatency
+#define DIRECT_CACHE 1
+#define CACHE_SIMULATION $simulation
+
+/* choose replacement algorithm */
+#define LRU 1
+
+#endif //QEMU_CACHE_CONFIGURATION_H
+EOM
+fi
+
+if [[ $configuration == "3" ]]; then
+/bin/cat <<EOM > $FILE
+#ifndef QEMU_CACHE_CONFIGURATION_H
+#define QEMU_CACHE_CONFIGURATION_H
+
+/*****************************/
+/* cache properties */
+/*****************************/
+
+#define CACHE_BLOCK_SIZE 256
+#define CACHE_SIZE 128
+#define CACHE_WAYS 16
+#define MISS_LATENCY $misslatency
+#define DIRECT_CACHE 0
+#define CACHE_SIMULATION $simulation
+
+/* choose replacement algorithm */
+#define LRU 1
+
+#endif //QEMU_CACHE_CONFIGURATION_H
+EOM
+fi
+
+if [[ $configuration == "4" ]]; then
+/bin/cat <<EOM > $FILE
+#ifndef QEMU_CACHE_CONFIGURATION_H
+#define QEMU_CACHE_CONFIGURATION_H
+
+/*****************************/
+/* cache properties */
+/*****************************/
+
+#define CACHE_BLOCK_SIZE 256
+#define CACHE_SIZE 128
+#define CACHE_WAYS 0
+#define MISS_LATENCY $misslatency
+#define DIRECT_CACHE 1
+#define CACHE_SIMULATION $simulation
+
+/* choose replacement algorithm */
+#define LRU 1
+
+#endif //QEMU_CACHE_CONFIGURATION_H
+EOM
+fi
+
+if [[ $configuration == "5" ]]; then
+/bin/cat <<EOM > $FILE
+#ifndef QEMU_CACHE_CONFIGURATION_H
+#define QEMU_CACHE_CONFIGURATION_H
+
+/*****************************/
+/* cache properties */
+/*****************************/
+
+#define CACHE_BLOCK_SIZE 64
+#define CACHE_SIZE (8*1024)
+#define CACHE_WAYS 16
+#define MISS_LATENCY $misslatency
+#define DIRECT_CACHE 0
+#define CACHE_SIMULATION $simulation
+
+/* choose replacement algorithm */
+#define LRU 1
+
+#endif //QEMU_CACHE_CONFIGURATION_H
+EOM
+fi
+
+if [[ $configuration == "6" ]]; then
+/bin/cat <<EOM > $FILE
+#ifndef QEMU_CACHE_CONFIGURATION_H
+#define QEMU_CACHE_CONFIGURATION_H
+
+/*****************************/
+/* cache properties */
+/*****************************/
+
+#define CACHE_BLOCK_SIZE 64
+#define CACHE_SIZE (8*1024)
+#define CACHE_WAYS 0
+#define MISS_LATENCY $misslatency
+#define DIRECT_CACHE 1
+#define CACHE_SIMULATION $simulation
+
+/* choose replacement algorithm */
+#define LRU 1
+
+#endif //QEMU_CACHE_CONFIGURATION_H
+EOM
+fi
+
+if [[ $configuration == "7" ]]; then
+/bin/cat <<EOM > $FILE
+#ifndef QEMU_CACHE_CONFIGURATION_H
+#define QEMU_CACHE_CONFIGURATION_H
+
+/*****************************/
+/* cache properties */
+/*****************************/
+
+#define CACHE_BLOCK_SIZE 512
+#define CACHE_SIZE (8*1024)
+#define CACHE_WAYS 16
+#define MISS_LATENCY $misslatency
+#define DIRECT_CACHE 0
+#define CACHE_SIMULATION $simulation
+
+/* choose replacement algorithm */
+#define LRU 1
+
+#endif //QEMU_CACHE_CONFIGURATION_H
+EOM
+fi
+
+if [[ $configuration == "8" ]]; then
+/bin/cat <<EOM > $FILE
+#ifndef QEMU_CACHE_CONFIGURATION_H
+#define QEMU_CACHE_CONFIGURATION_H
+
+/*****************************/
+/* cache properties */
+/*****************************/
+
+#define CACHE_BLOCK_SIZE 512
+#define CACHE_SIZE (8*1024)
+#define CACHE_WAYS 0
+#define MISS_LATENCY $misslatency
+#define DIRECT_CACHE 1
+#define CACHE_SIMULATION $simulation
+
+/* choose replacement algorithm */
+#define LRU 1
+
+#endif //QEMU_CACHE_CONFIGURATION_H
+EOM
+fi
+
+if [[ $configuration == "9" ]]; then
+  echo "----------------------------------------------------------------------"
+  echo "Configurate your cache."
+  echo "Info: script uses command line math tool 'bc'."
+  echo "      _block size_ (must be a power of 2) ---"
+  echo "      _cache size_ (must be a power of 2) ---"
+  echo "      _cache ways_ must be even (script will terminate if odd) ---"
+
+  echo ""
+  echo "Bc installed? (y/n)"
+  read installed
+
+  if [[ $installed == "n" ]]; then
+    echo "Do you want to install bc? (y/n)"
+    read install
+    if [[ $install == "y" ]]; then
+      sudo apt install bc
+    else
+      echo "Bc not installed but mandatory."
+      echo "Exit script."
+      exit $E_EXIT
+    fi
+  else
+    if [[ $installed == "y" ]]; then
+      echo "Bc already installed."
+    else
+      echo "Error: Wrong input."
+      echo "Exit script."
+      exit $E_EXIT
+    fi
+  fi
+
+  echo "----------------------------------------------------------------------"
+  echo "Define block size."
+  echo "Info: will be rounded to the nearest power of 2."
+  echo "Block size? (byte)"
+  read block_size
+  block_size=$(power2 $block_size)
+  echo "Block size is $block_size"
+
+  if [[ $block_size == "" ]]; then
+    echo "Error: No block size."
+    echo "Bc not installed?"
+    echo "Wrong input?"
+    echo "Exit script."
+    exit $E_EXIT
+  fi
+
+  echo "----------------------------------------------------------------------"
+  echo "Define cache size."
+  echo "Info: will be rounded to the nearest power of 2."
+  echo "Cache size? (kilobyte)"
+  read size
+  size=$(power2 $size)
+  echo "Cache size is $size"
+
+  if [[ $size == "" ]]; then
+    echo "Error: No cache size."
+    echo "Bc not installed?"
+    echo "Wrong input?"
+    echo "Exit script."
+    exit $E_EXIT
+  fi
+
+  echo "----------------------------------------------------------------------"
+  echo "Define cache ways."
+  echo "Info: Int must be be even."
+  echo "      Will use direct cache if you choose '0'."
+  echo "Cache ways? (int)"
+  read ways
+
+  re='^[0-9]+$'
+  if ! [[ $ways =~ $re ]]; then
+    echo "Error: Not a number." >&2;
+    echo "Exit script."
+    exit $E_EXIT
+  fi
+
+  if [[ $((ways % 2)) -ne 0 ]]; then
+    echo "Error: Cache ways not even."
+    echo "Wrong input?"
+    echo "Exit script."
+    exit $E_EXIT
+  fi
+
+  echo "Cache ways is $ways"
+
+  direct="0"
+  if [[ $ways -eq 0 ]] ; then
+    $direct="1"
+  fi
+
+#writing file:
+/bin/cat <<EOM > $FILE
+#ifndef QEMU_CACHE_CONFIGURATION_H
+#define QEMU_CACHE_CONFIGURATION_H
+
+/*****************************/
+/* cache properties */
+/*****************************/
+
+#define CACHE_BLOCK_SIZE $block_size
+#define CACHE_SIZE $size
+#define CACHE_WAYS $ways
+#define MISS_LATENCY $misslatency
+#define DIRECT_CACHE $direct
+#define CACHE_SIMULATION $simulation
+
+/* choose replacement algorithm */
+#define LRU 1
+
+#endif //QEMU_CACHE_CONFIGURATION_H
+EOM
+fi
+
+echo "----------------------------------------------------------------------"
+echo "${HEADERFOLDER}cache_configuration.h succesfully configurated."
+echo "Build qemu now? (y/n)"
+read build
+
+if [[ $build == "y" ]]; then
+    ./buildqemu clean
+    ./buildqemu x86
+  else
+    echo "----------------------------------------------------------------------"
+    echo "Nothing built."
+    echo "Exit script."
+    exit $E_EXIT
+  fi
+
+echo "----------------------------------------------------------------------"
+echo "Build done."
+echo "Start cache simulation? (y/n)"
+read start
+if [[ $start == "y" ]]; then
+    echo "----------------------------------------------------------------------"
+    echo "Start cache simulation in linux [1]"
+    echo "Start cache simulation in sweb [2]"
+    read start_choice
+    if [[ $start_choice == "1" ]]; then
+      ./buildqemu startqemulinux
+    elif [[ $start_choice == "2" ]]; then
+      ./buildqemu startqemusweb
+    else
+      echo "----------------------------------------------------------------------"
+      echo "Error: Wrong input"
+      echo "Exit script."
+    fi
+  else
+    echo "----------------------------------------------------------------------"
+    echo "No simulation start."
+    echo "Exit script."
+  fi

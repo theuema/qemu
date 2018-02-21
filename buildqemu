@@ -3,75 +3,54 @@
 # has to be placed in qemu root folder!
 
 E_BADARGS=65
-QEMUROOT="/home/theuema/Working/qemu"
-QEMUX86FOLDER="/home/theuema/Working/qemu/build_x86_64_debug/x86_64-softmmu"
-ARM64USRFOLDER="/home/theuema/Working/qemu/build_arm_64_debug/aarch64-linux-user"
-ZYNQDEPLOY="/working/build_yocto_pyro/tmp/deploy/images/qemu-zynq7"
-TESTFOLDER="/working/qemu/theuema_basic_tests"
-
+QEMUX86FOLDER="build_x86_64_debug/x86_64-softmmu"
+SWEBFOLDER="/tmp/sweb"
+LINUXVMFOLDER="/Users/theuema/Working/linux"
+LINUXIMG="${LINUXVMFOLDER}/mini_14_04.img"
 arg=$1
 
-if [[ $arg == "--help" ]]
-then
+if [[ $arg == "--help" ]]; then
   echo "----------------------------------------------------------------------"
-  echo "build/clean commands: $0 x86 | arm64 | clean"
+  echo "build/clean QEMU commands: $0 x86 | clean"
   echo ""
-  echo "gdb QEMU debug commands: $0 qemudebugsweb qemu_break_function_name"
-  echo "(will start sweb emulation in qemu)"
+  echo "Info: To use debugging & simulation commands, following paths must be set: "
+  echo "      Specify SWEB buildfolder-path variable. Current path: $SWEBFOLDER"
+  echo "      Specify Linux Distribution QCOW2 disk image file. Current File: $LINUXIMG"
   echo ""
-  echo "start QEMU SWEB session: $0 startqemu"
-  echo "(therefore build sweb in /tmp/sweb)"
+  echo "--- Start cache simulation commands ---"
+  echo "Start SWEB QEMU command: $0 startqemusweb"
+  echo "Start Linux Distribution QEMU command $0 startqemulinux"
   echo ""
-  echo "|| builds are stored in: build_x86_64_debug | build_arm_64_debug"
+  echo "--- Fast cache debugging commands ---"
+  echo "GDB SWEB QEMU debug command: $0 qemudebugsweb qemu_break_function_name"
+  echo "GDB Linux Distribution QEMU debug command: $0 qemudebuglinux qemu_break_function_name"
   echo ""
-  echo "-not used-------------------------------------------------------------"
-  echo "AARCH64 usermode compile commands: $0 aarch64 filename.c"
-  echo "|| store files to compile in ${TESTFOLDER}"
+  echo ""
+  echo "Softmmu build folder: $QEMUX86FOLDER"
   echo "----------------------------------------------------------------------"
   exit $E_BADARGS
 else
   param=$2
 fi
 
-if [[ $arg == "x86" ]]
-then
+if [[ $arg == "x86" ]]; then
   rm -rf build_x86_64_debug
   mkdir -p build_x86_64_debug; cd build_x86_64_debug
   ../configure --python=/usr/bin/python2 --enable-trace-backend=simple --disable-werror --disable-strip --enable-debug --enable-debug-info --target-list="x86_64-softmmu"
   make -j16
-elif [[ $arg == "clean" ]]
-then
+elif [[ $arg == "clean" ]]; then
   rm -rf build_x86_64_debug
   rm -rf build_arm_64_debug
 else
-  if [[ $arg == "arm64" ]]
-  then
-    rm -rf build_arm_64_debug
-    mkdir -p build_arm_64_debug; cd build_arm_64_debug
-    ../configure --python=/usr/bin/python2 --target-list="aarch64-softmmu" --enable-debug --enable-fdt --enable-sdl --disable-werror
-# removed target: microblazeel-softmmu
-#--extra-cflags="-DXILINX_SPIPS_ERR_DEBUG=2 \
-#                    -DM25P80_ERR_DEBUG=2 \
-#                    -DNAND_ERR_DEBUG=1 \
-#                    -DARASAN_NFC_ERR_DEBUG=1 \
-#                    -DSDHC_DEBUG \
-#                    -DFDT_GENERIC_UTIL_ERR_DEBUG=2 \
-#		    -DCONFIG_FDT"
-    make -j16
-  elif [[ $arg == "qemudebugsweb" ]] && [[ $param ]]
-  then
-    cd /tmp/sweb
-    gdb ${QEMUX86FOLDER}/qemu-system-x86_64 -ex "break $param" -ex "run -m 8M -cpu qemu64 -drive file=SWEB-flat.vmdk,index=0,media=disk,format=raw -debugcon stdio -no-reboot" -ex "tui enable"
+  if [[ $arg == "qemudebugsweb" ]] && [[ $param ]]; then
+    gdb ${QEMUX86FOLDER}/qemu-system-x86_64 -ex "break $param" -ex "run -m 8M -cpu qemu64 -drive file=${SWEBFOLDER}/SWEB-flat.vmdk,index=0,media=disk,format=raw -debugcon stdio -no-reboot" -ex "tui enable"
+  elif [[ $arg == "qemudebuglinux" ]] && [[ $param ]]; then
+    gdb ${QEMUX86FOLDER}/qemu-system-x86_64 -ex "break $param" -ex "run -m 2048 -cpu qemu64 -hda ${LINUXIMG} -debugcon stdio -no-reboot" -ex "tui enable"
   else
-    if [[ $arg == "startsweb" ]]
-    then
-      cd /tmp/sweb
-       ${QEMUX86FOLDER}/qemu-system-x86_64 -m 8M -cpu qemu64 -drive file=SWEB-flat.vmdk,index=0,media=disk,format=raw -debugcon stdio -no-reboot
-    elif [[ $arg == "aarch64" ]] && [[ $param ]]
-    then
-      cd ${TESTFOLDER}
-      aarch64-linux-gnu-gcc -Wall -o test $param
-      cd ${QEMUROOT}
+    if [[ $arg == "startqemusweb" ]]; then
+      ${QEMUX86FOLDER}/qemu-system-x86_64 -m 8M -cpu qemu64 -drive file=${SWEBFOLDER}/SWEB-flat.vmdk,index=0,media=disk,format=raw -debugcon stdio -no-reboot
+    elif [[ $arg == "startqemulinux" ]]; then
+      ${QEMUX86FOLDER}/qemu-system-x86_64 -m 2048 -cpu qemu64 -hda ${LINUXIMG} -debugcon stdio -no-reboot
     else
       echo "Unknown arguments. See --help for usage information!"
       exit $E_BADARGS
