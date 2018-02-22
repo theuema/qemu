@@ -1,6 +1,8 @@
 build_*
 theuema*
 .idea/
+.DS_Store
+
 CMakeLists.txt
 cmake-build-debug/
 /config-devices.*
