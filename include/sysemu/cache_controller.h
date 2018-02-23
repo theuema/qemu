@@ -28,13 +28,18 @@ void check_hit_miss(hwaddr addr, unsigned size);
 void direct_cache_miss(unsigned size, bool valid_bit, CacheLine *cache_tag_ptr, uint64_t addr_tag);
 void associative_cache_miss(unsigned size, bool replacement,
                             CacheLine *cache_line, CacheSet* cache_set, uint64_t addr_tag);
-void enable_cache_simulation(void);
-void disable_cache_simulation(void);
-bool cache_simulation(void);
+
 void lru_replace(CacheLine *cache_line, uint64_t addr_tag);
 
+bool cache_simulation_active(void);
+void enable_cache_simulation(void);
+void disable_cache_simulation(void);
+
+bool tc_lookup_active(void);
+void enable_tc_lookup(void);
+void disable_tc_lookup(void);
+
 void flush_all(void);
-void count_hit(void);
 void write_hit_log(void);
 
 #endif //QEMU_CACHE_CONTROLLER_H

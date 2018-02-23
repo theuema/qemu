@@ -22,8 +22,14 @@
 #include "exec/ram_addr.h"
 #include "sysemu/cache_configuration.h"
 
+#define TC_LOOKUP 1
+
 MemCache* cache;
-bool cache_simulation_active = CACHE_SIMULATION;
+bool cache_simulation_status = CACHE_SIMULATION;
+bool cache_simulation_active(void){return cache_simulation_status;}
+
+bool tc_lookup_status = TC_LOOKUP;
+bool tc_lookup_active(void){return tc_lookup_status;}
 
 struct CacheLine{
     bool valid;
@@ -143,6 +149,8 @@ void direct_cache_miss(unsigned size, bool valid_bit, CacheLine *cache_line, uin
     ts.tv_nsec = MISS_LATENCY;
     nanosleep(&ts, NULL);
 */
+    // better use usleep?
+    //usleep();
 
     // store TAG to CACHE and set valid bit
     cache_line->tag = addr_tag;
@@ -160,7 +168,10 @@ void associative_cache_miss(unsigned size, bool replacement,
     ts.tv_nsec = MISS_LATENCY;
     nanosleep(&ts, NULL);
 */
-    // line never touched, set valid and store tag
+    // better use usleep?
+    //usleep();
+
+    // no replacement because line never used before; just store tag;
     if(!replacement){
         cache_line->tag = addr_tag;
         cache_line->valid = true;
@@ -180,11 +191,6 @@ void check_hit_miss(hwaddr addr, unsigned size){
     uint64_t addr_tag = addr >> (cache->kbits+cache->nbits);
     CacheLine* cache_line;
 
-    FILE *fc = fopen("logs/hit_log", "a");
-    assert(fc != NULL);
-    fprintf(fc, "CHECK HIT/MISS!\n");
-    fclose(fc);
-
     if(cache->ways)
         goto associative;
 
@@ -200,7 +206,7 @@ void check_hit_miss(hwaddr addr, unsigned size){
     if(cache_line->valid && cache_line->tag == addr_tag){
         // actual cache line is valid and TAGs are congruent            -> cache hit
         pthread_mutex_unlock(&cache_line->cache_line_mutex);
-        count_hit();
+        cache->cache_hits++;
         goto check_done;
     }
 
@@ -231,7 +237,7 @@ void check_hit_miss(hwaddr addr, unsigned size){
             cache_line->accessed++;
 #endif
             pthread_mutex_unlock(&cache_set->cache_set_mutex);
-            count_hit();
+            cache->cache_hits++;
             goto check_done;
         }
 
@@ -260,33 +266,35 @@ void check_hit_miss(hwaddr addr, unsigned size){
     return;
 }
 
+/* functions for simple hit count due to clflush / timing problems at the end of my thesis*/
+void write_hit_log(void){
+    FILE *fc = fopen("logs/hit_log", "ab+");
+    assert(fc != NULL);
+    fprintf(fc, "num of cache hits: %llu\n", cache->cache_hits);
+    fclose(fc);
+}
+
 /* functions used by hmp-commands to control cache via qemu monitor*/
 void enable_cache_simulation(void){
-    cache_simulation_active = true;
-    FILE *fc = fopen("logs/hit_log", "a");
+    cache_simulation_status = true;
+    FILE *fc = fopen("logs/hit_log", "ab+");
     assert(fc != NULL);
     fprintf(fc, "cache simulation enabled!\n");
     fclose(fc);
 
 }
 void disable_cache_simulation(void){
-    cache_simulation_active = false;
-    FILE *fc = fopen("logs/hit_log", "a");
+    cache_simulation_status = false;
+    write_hit_log();
+    FILE *fc = fopen("logs/hit_log", "ab+");
     assert(fc != NULL);
     fprintf(fc, "cache simulation disabled!\n");
     fclose(fc);
 
 }
-bool cache_simulation(void){return cache_simulation_active;}
 
-/* functions for simple hit count due to clflush / timing problems at the end of my thesis*/
-void count_hit(void){cache->cache_hits++;}
-void write_hit_log(void){
-    FILE *fc = fopen("logs/hit_log", "a");
-    assert(fc != NULL);
-    fprintf(fc, "num of cache hits: %llu\n", cache->cache_hits);
-    fclose(fc);
-}
+void enable_tc_lookup(void){ tc_lookup_status = true; }
+void disable_tc_lookup(void){ tc_lookup_status = false; }
 
 /* Tried to flush my cache to enable timing attacks but
  * doesn't work out. See translate.c:7947

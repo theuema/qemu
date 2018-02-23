@@ -7945,13 +7945,16 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             break;
 
         CASE_MODRM_MEM_OP(7): /* clflush / clflushopt */
-            if(!cache_simulation()){
+            if(!cache_simulation_active()){
+                /* theuema: block added for benchmarking */
+                // need to disable tc (translation cache / also pc) lookups temporary in cpu-exec.c
+                disable_tc_lookup();
                 enable_cache_simulation();
             }else{
+                enable_tc_lookup();
                 disable_cache_simulation();
-                write_hit_log();
-            } /* block added for benchmarking */
-                /* flush_all can go here */
+            }
+            /* flush_all can possibly go here */
             if (prefixes & PREFIX_LOCK) {
                 goto illegal_op;
             }

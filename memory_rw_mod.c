@@ -36,7 +36,7 @@ static uint64_t memory_region_ram_read(void *opaque,
     // theuema_cache
     // hwaddr // typedef uint64_t hwaddr;
     // check hit or miss;
-    if(cache_simulation())
+    if(cache_simulation_active())
         check_hit_miss(addr, size);
 
     // if miss delay;
