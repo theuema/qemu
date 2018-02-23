@@ -38,7 +38,7 @@ fi
 if [[ $arg == "buildx86" ]]; then
   rm -rf build_x86_64_debug
   mkdir -p build_x86_64_debug; cd build_x86_64_debug
-  ../configure --python=/usr/bin/python2 --enable-trace-backend=simple --disable-werror --disable-strip --enable-debug --enable-debug-info --target-list="x86_64-softmmu"
+  ../configure --python=/usr/bin/python --enable-trace-backend=simple --disable-werror --disable-strip --enable-debug --enable-debug-info --target-list="x86_64-softmmu"
   make -j16
 elif [[ $arg == "clean" ]]; then
   rm -rf build_x86_64_debug

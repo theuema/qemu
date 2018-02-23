@@ -25,11 +25,6 @@
 MemCache* cache;
 bool cache_simulation_active = CACHE_SIMULATION;
 
-/* functions used by hmp-commands to control cache via qemu monitor*/
-void enable_cache_simulation(void){cache_simulation_active = true;}
-void disable_cache_simulation(void){cache_simulation_active = false;}
-bool cache_simulation(void){return cache_simulation_active;}
-
 struct CacheLine{
     bool valid;
     uint64_t tag;
@@ -54,6 +49,7 @@ struct MemCache {
     uint32_t block_size;
     CacheLine* cache_line_ptr;      //direct
     CacheSet* cache_set_ptr;        //associative
+    uint64_t cache_hits;
 };
 
 // constructor (OOP style);
@@ -65,6 +61,7 @@ void MemCache__init(MemCache* self, uint32_t size, uint8_t ways, CacheLine* line
     self->nbits = nbits;
     self->cache_line_ptr = line_ptr;
     self->cache_set_ptr = set_ptr;
+    self->cache_hits = 0;
 }
 
 // cache allocation & initialization
@@ -141,10 +138,11 @@ void lru_replace(CacheLine *cache_line, uint64_t addr_tag){
 
 
 void direct_cache_miss(unsigned size, bool valid_bit, CacheLine *cache_line, uint64_t addr_tag){
-    struct timespec ts;
+/*   struct timespec ts;
     ts.tv_sec = 0;
     ts.tv_nsec = MISS_LATENCY;
     nanosleep(&ts, NULL);
+*/
 
     // store TAG to CACHE and set valid bit
     cache_line->tag = addr_tag;
@@ -156,11 +154,12 @@ void direct_cache_miss(unsigned size, bool valid_bit, CacheLine *cache_line, uin
 
 void associative_cache_miss(unsigned size, bool replacement,
                             CacheLine *cache_line, CacheSet* cache_set, uint64_t addr_tag){
+/*
     struct timespec ts;
     ts.tv_sec = 0;
     ts.tv_nsec = MISS_LATENCY;
     nanosleep(&ts, NULL);
-
+*/
     // line never touched, set valid and store tag
     if(!replacement){
         cache_line->tag = addr_tag;
@@ -181,6 +180,11 @@ void check_hit_miss(hwaddr addr, unsigned size){
     uint64_t addr_tag = addr >> (cache->kbits+cache->nbits);
     CacheLine* cache_line;
 
+    FILE *fc = fopen("logs/hit_log", "a");
+    assert(fc != NULL);
+    fprintf(fc, "CHECK HIT/MISS!\n");
+    fclose(fc);
+
     if(cache->ways)
         goto associative;
 
@@ -196,6 +200,7 @@ void check_hit_miss(hwaddr addr, unsigned size){
     if(cache_line->valid && cache_line->tag == addr_tag){
         // actual cache line is valid and TAGs are congruent            -> cache hit
         pthread_mutex_unlock(&cache_line->cache_line_mutex);
+        count_hit();
         goto check_done;
     }
 
@@ -226,6 +231,7 @@ void check_hit_miss(hwaddr addr, unsigned size){
             cache_line->accessed++;
 #endif
             pthread_mutex_unlock(&cache_set->cache_set_mutex);
+            count_hit();
             goto check_done;
         }
 
@@ -252,4 +258,62 @@ void check_hit_miss(hwaddr addr, unsigned size){
     }
     check_done:
     return;
+}
+
+/* functions used by hmp-commands to control cache via qemu monitor*/
+void enable_cache_simulation(void){
+    cache_simulation_active = true;
+    FILE *fc = fopen("logs/hit_log", "a");
+    assert(fc != NULL);
+    fprintf(fc, "cache simulation enabled!\n");
+    fclose(fc);
+
+}
+void disable_cache_simulation(void){
+    cache_simulation_active = false;
+    FILE *fc = fopen("logs/hit_log", "a");
+    assert(fc != NULL);
+    fprintf(fc, "cache simulation disabled!\n");
+    fclose(fc);
+
+}
+bool cache_simulation(void){return cache_simulation_active;}
+
+/* functions for simple hit count due to clflush / timing problems at the end of my thesis*/
+void count_hit(void){cache->cache_hits++;}
+void write_hit_log(void){
+    FILE *fc = fopen("logs/hit_log", "a");
+    assert(fc != NULL);
+    fprintf(fc, "num of cache hits: %llu\n", cache->cache_hits);
+    fclose(fc);
+}
+
+/* Tried to flush my cache to enable timing attacks but
+ * doesn't work out. See translate.c:7947
+ */
+void flush_all(void){
+    /* direct cache mapping */
+    if(DIRECT_CACHE){
+        uint32_t lines = cache->size/cache->block_size;
+
+        CacheLine* curr_line_ptr;
+        for(uint32_t i = 0; i < lines; i++){
+            curr_line_ptr = cache->cache_line_ptr+i;
+            curr_line_ptr->valid = false;
+        }
+    }else {
+        /* associative cache mapping */
+        uint32_t sets = (cache->size/cache->block_size) / cache->ways;
+
+        CacheSet* curr_set_ptr;
+        for(uint32_t i = 0; i < sets; i++) {
+            curr_set_ptr = cache->cache_set_ptr+i;
+
+            CacheLine* curr_line_ptr;
+            for(uint8_t n = 0; n < curr_set_ptr->lines; n++){
+                curr_line_ptr = curr_set_ptr->cache_line_ptr+i;
+                curr_line_ptr->valid = false;
+            }
+        }
+    }
 }

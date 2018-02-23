@@ -616,7 +616,7 @@ ETEXI
 STEXI
 @item cache_disable
 @findex cache_disable
-Enabling cache simulation.
+Disabling cache simulation.
 ETEXI
 
     {

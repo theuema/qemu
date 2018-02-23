@@ -30,7 +30,7 @@
 
 #include "trace-tcg.h"
 #include "exec/log.h"
-
+#include "sysemu/cache_controller.h"
 
 #define PREFIX_REPZ   0x01
 #define PREFIX_REPNZ  0x02
@@ -7945,6 +7945,13 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             break;
 
         CASE_MODRM_MEM_OP(7): /* clflush / clflushopt */
+            if(!cache_simulation()){
+                enable_cache_simulation();
+            }else{
+                disable_cache_simulation();
+                write_hit_log();
+            } /* block added for benchmarking */
+                /* flush_all can go here */
             if (prefixes & PREFIX_LOCK) {
                 goto illegal_op;
             }

@@ -33,4 +33,8 @@ void disable_cache_simulation(void);
 bool cache_simulation(void);
 void lru_replace(CacheLine *cache_line, uint64_t addr_tag);
 
+void flush_all(void);
+void count_hit(void);
+void write_hit_log(void);
+
 #endif //QEMU_CACHE_CONTROLLER_H
