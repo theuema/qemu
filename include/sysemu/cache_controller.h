@@ -9,6 +9,7 @@
 #include "qemu/option.h"
 #include "sysemu/sysemu.h"
 #include "sysemu/hostmem.h"
+#include "sysemu/cache_configuration.h"
 
 //#include <zlib.h> // size_t?
 
@@ -40,6 +41,6 @@ void enable_tc_lookup(void);
 void disable_tc_lookup(void);
 
 void flush_all(void);
-void write_hit_log(void);
+void write_log(void);
 
 #endif //QEMU_CACHE_CONTROLLER_H

@@ -23,9 +23,8 @@ if [[ $arg == "--help" ]]; then
   echo "Start SWEB QEMU command:                  $0 startsweb"
   echo "Start Linux Distribution QEMU command:    $0 startlinux"
   echo ""
-  echo "--- Fast cache debugging commands ---"
-  echo "GDB SWEB QEMU debug command:              $0 debugsweb qemu_break_function_name"
-  echo "GDB Linux Distro QEMU debug command:      $0 debuglinux qemu_break_function_name"
+  echo "--- Fast cache debugging command with sweb ---"
+  echo "GDB SWEB QEMU debug command:              $0 debugwsweb qemu_break_function_name"
   echo ""
   echo ""
   echo "Softmmu build folder: $QEMUX86FOLDER"
@@ -44,10 +43,8 @@ elif [[ $arg == "clean" ]]; then
   rm -rf build_x86_64_debug
   rm -rf build_arm_64_debug
 else
-  if [[ $arg == "debugsweb" ]] && [[ $param ]]; then
+  if [[ $arg == "debugwsweb" ]] && [[ $param ]]; then
     gdb ${QEMUX86FOLDER}/qemu-system-x86_64 -ex "break $param" -ex "run -m 8M -cpu qemu64 -drive file=${SWEBFOLDER}/SWEB-flat.vmdk,index=0,media=disk,format=raw -debugcon stdio -no-reboot" -ex "tui enable"
-  elif [[ $arg == "debuglinux" ]] && [[ $param ]]; then
-    gdb ${QEMUX86FOLDER}/qemu-system-x86_64 -ex "break $param" -ex "run -m 2048 -cpu qemu64 -hda ${LINUXIMG} -debugcon stdio -no-reboot" -ex "tui enable"
   else
     if [[ $arg == "startsweb" ]]; then
       ${QEMUX86FOLDER}/qemu-system-x86_64 -m 8M -cpu qemu64 -drive file=${SWEBFOLDER}/SWEB-flat.vmdk,index=0,media=disk,format=raw -debugcon stdio -no-reboot

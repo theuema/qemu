@@ -441,7 +441,8 @@ static MemTxResult  memory_region_read_accessor(MemoryRegion *mr,
         trace_memory_region_tb_read(get_cpu_index(), addr, tmp, size);
     } else if (TRACE_MEMORY_REGION_OPS_READ_ENABLED) {
         hwaddr abs_addr = memory_region_to_absolute_addr(mr, addr);
-        trace_memory_region_ops_read(get_cpu_index(), mr, abs_addr, tmp, size);
+        //theuema: not needed
+        //trace_memory_region_ops_read(get_cpu_index(), mr, abs_addr, tmp, size);
     }
     *value |= (tmp & mask) << shift;
     return MEMTX_OK;
@@ -520,7 +521,8 @@ static MemTxResult memory_region_write_accessor(MemoryRegion *mr,
         trace_memory_region_tb_write(get_cpu_index(), addr, tmp, size);
     } else if (TRACE_MEMORY_REGION_OPS_WRITE_ENABLED) {
         hwaddr abs_addr = memory_region_to_absolute_addr(mr, addr);
-        trace_memory_region_ops_write(get_cpu_index(), mr, abs_addr, tmp, size);
+        //theuema: not needed
+        //trace_memory_region_ops_write(get_cpu_index(), mr, abs_addr, tmp, size);
     }
     mr->ops->write(mr->opaque, addr, tmp, size);
     return MEMTX_OK;

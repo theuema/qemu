@@ -306,6 +306,11 @@ static TranslationBlock *tb_find_slow(CPUState *cpu,
     mmap_lock();
     tb_lock();
     tb = tb_find_physical(cpu, pc, cs_base, flags);
+
+    /* theuema, disable tc lookup for generating memory accesses in user mode */
+    if(!tc_lookup_active())
+        tb = NULL;
+
     if (tb) {
         mmap_unlock();
         goto found;

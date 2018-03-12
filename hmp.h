@@ -136,5 +136,7 @@ void hmp_info_dump(Monitor *mon, const QDict *qdict);
 void hmp_hotpluggable_cpus(Monitor *mon, const QDict *qdict);
 void hmp_cache_enable(Monitor *mon, const QDict *qdict);
 void hmp_cache_disable(Monitor *mon, const QDict *qdict);
+void hmp_tc_enable(Monitor *mon, const QDict *qdict);
+void hmp_tc_disable(Monitor *mon, const QDict *qdict);
 
 #endif

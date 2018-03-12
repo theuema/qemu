@@ -1,0 +1,56 @@
+----- associative cache -----
+
+num of cache hits: 0
+num of cache misses: 0
+num of replacements 0
+cache simulation enabled!
+num of cache hits: 381696999
+num of cache misses: 2725131
+num of replacements 2723101
+cache simulation disabled!
+
+num of cache hits: 381696999
+num of cache misses: 2725131
+num of replacements 2723101
+cache simulation enabled!
+num of cache hits: 579016940
+num of cache misses: 3441386
+num of replacements 3439356
+cache simulation disabled!
+
+num of cache hits: 0
+num of cache misses: 0
+num of replacements 0
+cache simulation enabled!
+num of cache hits: 87662938
+num of cache misses: 580195
+num of replacements 578149
+cache simulation disabled!
+
+num of cache hits: 0
+num of cache misses: 0
+num of replacements 0
+cache simulation enabled!
+num of cache hits: 407984019
+num of cache misses: 2339658
+num of replacements 2337610
+cache simulation disabled!
+
+----- direct cache -----
+num of cache hits: 0
+num of cache misses: 0
+num of replacements 0
+cache simulation enabled!
+num of cache hits: 15088167
+num of cache misses: 323706
+num of replacements 0
+cache simulation disabled!
+
+num of cache hits: 15088167
+num of cache misses: 323706
+num of replacements 0
+cache simulation enabled!
+num of cache hits: 128703235
+num of cache misses: 910092
+num of replacements 0
+cache simulation disabled!

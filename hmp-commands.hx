@@ -592,6 +592,34 @@ intercepts at low level, such as @code{ctrl-alt-f1} in X Window.
 ETEXI
 
     {
+        .name       = "tc_enable",
+        .args_type  = "",
+        .params     = "",
+        .help       = "enable cache simulation",
+        .mhandler.cmd = hmp_tc_enable,
+    },
+
+STEXI
+@item tc_enable
+@findex tc_enable
+Enabling cache simulation.
+ETEXI
+
+    {
+        .name       = "tc_disable",
+        .args_type  = "",
+        .params     = "",
+        .help       = "disable cache simulation",
+        .mhandler.cmd = hmp_tc_disable,
+    },
+
+STEXI
+@item tc_disable
+@findex tc_disable
+Disabling tc lookup.
+ETEXI
+
+    {
         .name       = "cache_enable",
         .args_type  = "",
         .params     = "",
