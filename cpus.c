@@ -46,6 +46,7 @@
 #include "qapi-event.h"
 #include "hw/nmi.h"
 #include "sysemu/replay.h"
+#include "sysemu/cache_controller.h"
 
 #ifndef _WIN32
 #include "qemu/compatfd.h"
@@ -170,6 +171,9 @@ int64_t cpu_get_icount_raw(void)
 static int64_t cpu_get_icount_locked(void)
 {
     int64_t icount = cpu_get_icount_raw();
+    if(cache_simulation_active() && cache_active()){
+        return timers_state.qemu_icount_bias + cpu_icount_to_ns(icount) + get_icount_cache_miss_offset();
+    }
     return timers_state.qemu_icount_bias + cpu_icount_to_ns(icount);
 }
 

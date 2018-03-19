@@ -59,9 +59,9 @@ typedef uint64_t target_ulong;
 #define CPU_VTLB_SIZE 8
 
 #if HOST_LONG_BITS == 32 && TARGET_LONG_BITS == 32
-#define CPU_TLB_ENTRY_BITS 4
-#else
 #define CPU_TLB_ENTRY_BITS 5
+#else
+#define CPU_TLB_ENTRY_BITS 6
 #endif
 
 /* TCG_TARGET_TLB_DISPLACEMENT_BITS is used in CPU_TLB_BITS to ensure that
@@ -111,6 +111,7 @@ typedef struct CPUTLBEntry {
             /* Addend to virtual address to get host address.  IO accesses
                use the corresponding iotlb value.  */
             uintptr_t addend;
+            uintptr_t phys;
         };
         /* padding to get a power of two size */
         uint8_t dummy[1 << CPU_TLB_ENTRY_BITS];

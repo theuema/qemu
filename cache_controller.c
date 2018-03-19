@@ -21,10 +21,12 @@
 #include "exec/memory-internal.h"
 #include "exec/ram_addr.h"
 
-#define TC_LOOKUP 1
-
 MemCache* cache;
-bool cache_simulation_status = CACHE_SIMULATION;
+
+bool cache_status = false; /* is constructed */
+bool cache_active(){return cache_status;}
+
+bool cache_simulation_status = CACHE_SIMULATION; /* actual simulation of misses and hits */
 bool cache_simulation_active(void){return cache_simulation_status;}
 
 bool tc_lookup_status = TC_LOOKUP;
@@ -51,6 +53,7 @@ struct MemCache {
     uint8_t ways;
     uint8_t kbits;
     uint8_t nbits;
+    int miss_latency;
     uint32_t block_size;
     CacheLine* cache_line_ptr;      //direct
     CacheSet* cache_set_ptr;        //associative
@@ -58,6 +61,22 @@ struct MemCache {
     uint64_t cache_misses;
     uint64_t replacements;
 };
+
+
+int ipow(int base, int exp)
+{
+    int result = 1;
+    while (exp)
+    {
+        if (exp & 1)
+            result *= base;
+        exp >>= 1;
+        base *= base;
+    }
+
+    return result;
+}
+
 
 // constructor (OOP style);
 void MemCache__init(MemCache* self, uint32_t size, uint8_t ways, CacheLine* line_ptr, CacheSet* set_ptr,
@@ -71,6 +90,9 @@ void MemCache__init(MemCache* self, uint32_t size, uint8_t ways, CacheLine* line
     self->cache_hits = 0;
     self->cache_misses = 0;
     self->replacements = 0;
+    self->miss_latency = MISS_LATENCY;
+
+    cache_status = true;
 }
 
 // cache allocation & initialization
@@ -146,20 +168,17 @@ void lru_replace(CacheLine *cache_line, uint64_t addr_tag){
     cache->replacements++;
 }
 
-
 void direct_cache_miss(unsigned size, bool valid_bit, CacheLine *cache_line, uint64_t addr_tag){
-    struct timespec ts;
-    ts.tv_sec = 0;
-    ts.tv_nsec = MISS_LATENCY;
-    nanosleep(&ts, NULL);
-
-    // better use usleep?
-    //usleep();
 
     // store TAG to CACHE and set valid bit
     cache_line->tag = addr_tag;
     if(!valid_bit)
         cache_line->valid = true;
+
+    // miss simulation time
+    for(int i = 0; i < cache->miss_latency; ++i){
+        asm volatile("nop");
+    }
 
     cache->cache_misses++;
     pthread_mutex_unlock(&cache_line->cache_line_mutex);
@@ -168,10 +187,18 @@ void direct_cache_miss(unsigned size, bool valid_bit, CacheLine *cache_line, uin
 void associative_cache_miss(unsigned size, bool replacement,
                             CacheLine *cache_line, CacheSet* cache_set, uint64_t addr_tag){
 
-    struct timespec ts;
-    ts.tv_sec = 0;
-    ts.tv_nsec = MISS_LATENCY;
-    nanosleep(&ts, NULL);
+        /* currently not working due to rdtsc behaviour.
+         * cpu_get_ticks() should work the way it is supposed to be
+         * but i get some strange decreasing ticks in some test cases */
+//        struct timespec ts;
+//        ts.tv_sec = 0;
+//        ts.tv_nsec = cache->miss_latency;
+//        nanosleep(&ts, NULL);
+
+    // miss simulation time
+    for(int i = 0; i < cache->miss_latency; ++i){
+        asm volatile("nop");
+    }
 
     // no replacement because line never used before; just store tag;
     if(!replacement){
@@ -188,6 +215,10 @@ void associative_cache_miss(unsigned size, bool replacement,
     miss_out:
     cache->cache_misses++;
     pthread_mutex_unlock(&cache_line->cache_line_mutex);
+}
+
+uint64_t get_icount_cache_miss_offset(void){
+    return (uint64_t)(cache->cache_misses * cache->miss_latency);
 }
 
 void check_hit_miss(hwaddr addr, unsigned size){
@@ -269,41 +300,6 @@ void check_hit_miss(hwaddr addr, unsigned size){
     return;
 }
 
-/* functions for simple hit count due to clflush / timing problems at the end of my thesis*/
-void write_log(void){
-    FILE *fc = fopen("logs/hit_log", "ab+");
-    assert(fc != NULL);
-    fprintf(fc, "num of cache hits: %llu \n"
-            "num of cache misses: %llu \n"
-            "num of replacements %llu \n", cache->cache_hits, cache->cache_misses, cache->replacements);
-    fclose(fc);
-}
-
-/* functions used by hmp-commands to control cache via qemu monitor*/
-void enable_cache_simulation(void){
-    //tc_lookup_status = false;
-    cache_simulation_status = true;
-    write_log();
-    FILE *fc = fopen("logs/hit_log", "ab+");
-    assert(fc != NULL);
-    fprintf(fc, "cache simulation enabled!\n");
-    fclose(fc);
-
-}
-void disable_cache_simulation(void){
-    tc_lookup_status = true;
-    cache_simulation_status = false;
-    write_log();
-    FILE *fc = fopen("logs/hit_log", "ab+");
-    assert(fc != NULL);
-    fprintf(fc, "cache simulation disabled!\n");
-    fclose(fc);
-
-}
-
-void enable_tc_lookup(void){ tc_lookup_status = true; }
-void disable_tc_lookup(void){ tc_lookup_status = false; }
-
 /* Tried to flush my cache to enable timing attacks but
  * doesn't work out due to tcg behaviour. See translate.c:7947
  */
@@ -338,3 +334,35 @@ void flush_all(void){
         }
     }
 }
+
+/* functions for printing simple hit count */
+void write_log(void){
+    FILE *fc = fopen("logs/hit_log", "ab+");
+    assert(fc != NULL);
+    fprintf(fc, "num of cache hits: %llu \n"
+            "num of cache misses: %llu \n"
+            "num of replacements %llu \n", cache->cache_hits, cache->cache_misses, cache->replacements);
+    fclose(fc);
+}
+
+/* functions used by hmp-commands to control cache via qemu monitor */
+void enable_cache_simulation(void){
+    //tc_lookup_status = false;
+    write_log();
+    FILE *fc = fopen("logs/hit_log", "ab+");
+    assert(fc != NULL);
+    fprintf(fc, "cache simulation enabled!\n");
+    fclose(fc);
+    cache_simulation_status = true;
+}
+void disable_cache_simulation(void){
+    cache_simulation_status = false;
+    write_log();
+    FILE *fc = fopen("logs/hit_log", "ab+");
+    assert(fc != NULL);
+    fprintf(fc, "cache simulation disabled!\n");
+    fclose(fc);
+
+}
+void enable_tc_lookup(void){ tc_lookup_status = true; }
+void disable_tc_lookup(void){ tc_lookup_status = false; }

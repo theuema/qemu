@@ -390,6 +390,18 @@ void tlb_set_page_with_attrs(CPUState *cpu, target_ulong vaddr,
     env->iotlb[mmu_idx][index].addr = iotlb - vaddr;
     env->iotlb[mmu_idx][index].attrs = attrs;
     te->addend = addend - vaddr;
+    //theuematry
+    te->phys = paddr;
+
+//    //theuematry
+//    FILE *fc = fopen("logs/big_log", "ab+");
+//    assert(fc != NULL);
+//    fprintf(fc, "cputlb.c:tlb_set_page_with_attrs:395\n");
+//    fprintf(fc, "-> stuff written in CPUTLBEntry:\n");
+//    fprintf(fc, "--> te->phys = %llx, vaddr = %llx\n", paddr, vaddr);
+//    fclose(fc);
+
+
     if (prot & PAGE_READ) {
         te->addr_read = address;
     } else {

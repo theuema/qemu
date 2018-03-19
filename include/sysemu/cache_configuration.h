@@ -8,9 +8,10 @@
 #define CACHE_BLOCK_SIZE 64
 #define CACHE_SIZE 128
 #define CACHE_WAYS 16
-#define MISS_LATENCY 100000
+#define MISS_LATENCY 3000
 #define DIRECT_CACHE 0
 #define CACHE_SIMULATION 0
+#define TC_LOOKUP 1
 
 /* choose replacement algorithm */
 #define LRU 1
