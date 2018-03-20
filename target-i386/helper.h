@@ -206,6 +206,9 @@ DEF_HELPER_FLAGS_1(ctz, TCG_CALL_NO_RWG_SE, tl, tl)
 DEF_HELPER_FLAGS_2(pdep, TCG_CALL_NO_RWG_SE, tl, tl, tl)
 DEF_HELPER_FLAGS_2(pext, TCG_CALL_NO_RWG_SE, tl, tl, tl)
 
+/*CacheSim  */
+DEF_HELPER_1(flush_all, void, int)
+
 /* MMX/SSE */
 
 DEF_HELPER_2(ldmxcsr, void, env, i32)

@@ -25,6 +25,7 @@
 #include "exec/exec-all.h"
 #include "exec/cpu_ldst.h"
 #include "exec/log.h"
+#include "sysemu/cache_controller.h"
 
 //#define DEBUG_PCALL
 
@@ -2563,4 +2564,9 @@ void helper_check_iow(CPUX86State *env, uint32_t t0)
 void helper_check_iol(CPUX86State *env, uint32_t t0)
 {
     check_io(env, t0, 4, GETPC());
+}
+
+/*CacheSim  */
+void helper_flush_all(int not_used){
+    flush_all();
 }

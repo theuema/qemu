@@ -3107,12 +3107,6 @@ static inline uint64_t address_space_ldq_internal(AddressSpace *as, hwaddr addr,
     rcu_read_lock();
     mr = address_space_translate(as, addr, &addr1, &l,
                                  false);
-//    //theuematry
-//    FILE *fc = fopen("logs/big_log", "ab+");
-//    assert(fc != NULL);
-//    fprintf(fc, "exec.c:address_space_ldq_internal\n");
-//    fprintf(fc, "-> hwaddr addr = %llx, new hwaddr addr 1 = %llx\n", addr, addr1);
-//    fclose(fc);
 
     if (l < 8 || !memory_access_is_direct(mr, false)) {
         release_lock |= prepare_mmio_access(mr);

@@ -909,26 +909,16 @@ void hmp_system_reset(Monitor *mon, const QDict *qdict)
     qmp_system_reset(NULL);
 }
 
+/*CacheSim  */
 void hmp_cache_enable(Monitor *mon, const QDict *qdict)
 {
     enable_cache_simulation();
 
 }
-
+/*CacheSim  */
 void hmp_cache_disable(Monitor *mon, const QDict *qdict)
 {
     disable_cache_simulation();
-}
-
-void hmp_tc_enable(Monitor *mon, const QDict *qdict)
-{
-    enable_tc_lookup();
-
-}
-
-void hmp_tc_disable(Monitor *mon, const QDict *qdict)
-{
-    disable_tc_lookup();
 }
 
 void hmp_system_powerdown(Monitor *mon, const QDict *qdict)

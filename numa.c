@@ -432,8 +432,9 @@ static void allocate_system_memory_nonnuma(MemoryRegion *mr, Object *owner,
         exit(1);
 #endif
     } else {
-        //theuema_mod rw_mod
-        //memory_region_init_ram(mr, owner, name, ram_size, &error_fatal);
+        /*CacheSim  */
+        //memory_rw_mod
+        //original: memory_region_init_ram(mr, owner, name, ram_size, &error_fatal);
         memory_region_init_rw_mod(mr, owner, name, ram_size, &error_fatal);
     }
     vmstate_register_ram_global(mr);

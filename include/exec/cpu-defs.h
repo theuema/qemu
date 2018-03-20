@@ -111,6 +111,7 @@ typedef struct CPUTLBEntry {
             /* Addend to virtual address to get host address.  IO accesses
                use the corresponding iotlb value.  */
             uintptr_t addend;
+            /*CacheSim  */
             uintptr_t phys;
         };
         /* padding to get a power of two size */

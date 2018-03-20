@@ -24,6 +24,7 @@
 #include "qemu/timer.h"
 #include "exec/address-spaces.h"
 #include "exec/memory.h"
+#include "sysemu/cache_controller.h"
 
 #define DATA_SIZE (1 << SHIFT)
 
@@ -162,20 +163,8 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
     if ((addr & TARGET_PAGE_MASK)
          != (tlb_addr & (TARGET_PAGE_MASK | TLB_INVALID_MASK))) {
         if (!VICTIM_TLB_HIT(ADDR_READ, addr)) {
-//            FILE *fc = fopen("logs/big_log", "ab+");
-//            assert(fc != NULL);
-//            fprintf(fc, "--------> START ---------->>>> softmmu_template.h:helper_le_ld_name\n");
-//            fprintf(fc, "-> guest vaddr = %llx\n", addr);
-//            fclose(fc);
             tlb_fill(ENV_GET_CPU(env), addr, READ_ACCESS_TYPE,
                      mmu_idx, retaddr);
-            //theuematry
-            //guest_phys_haddr = addr - env->tlb_table[mmu_idx][index].ADDR_READ + env->tlb_table[mmu_idx][index].phys;
-//            FILE *de = fopen("logs/big_log", "ab+");
-//            assert(de != NULL);
-//            fprintf(de, "-> guest_phys_haddr = %llx\n", guest_phys_haddr);
-//            fprintf(de, "--------> END ---------->>>> \n");
-//            fclose(de);
         }
         tlb_addr = env->tlb_table[mmu_idx][index].ADDR_READ;
     }
@@ -215,16 +204,11 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
         res = (res1 >> shift) | (res2 << ((DATA_SIZE * 8) - shift));
         return res;
     }
-    //theuematry
+    /*CacheSim  */
     guest_phys_haddr = addr - env->tlb_table[mmu_idx][index].ADDR_READ + env->tlb_table[mmu_idx][index].phys;
-
     if(cache_simulation_active()){
-    //check_hit_miss(guest_phys_haddr, NULL);
-        for(int i = 0; i < 3000; ++i){
-            asm volatile("nop");
-        }
+        check_hit_miss(guest_phys_haddr, 0);
     }
-
 
     haddr = addr + env->tlb_table[mmu_idx][index].addend;
 #if DATA_SIZE == 1

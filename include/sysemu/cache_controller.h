@@ -30,19 +30,17 @@ void direct_cache_miss(unsigned size, bool valid_bit, CacheLine *cache_tag_ptr, 
 void associative_cache_miss(unsigned size, bool replacement,
                             CacheLine *cache_line, CacheSet* cache_set, uint64_t addr_tag);
 
-uint64_t get_icount_cache_miss_offset(void);
+//uint64_t get_icount_cache_miss_offset(void);
 void lru_replace(CacheLine *cache_line, uint64_t addr_tag);
 void flush_all(void);
 void write_log(void);
-
-int ipow(int base, int exp);
 
 bool cache_simulation_active(void);
 void enable_cache_simulation(void);
 void disable_cache_simulation(void);
 
-bool tc_lookup_active(void);
-void enable_tc_lookup(void);
-void disable_tc_lookup(void);
+/* icount miss offset implementation */
+bool cache_active(void);
+int64_t get_icount_cache_miss_offset(void);
 
 #endif //QEMU_CACHE_CONTROLLER_H

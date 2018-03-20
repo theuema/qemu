@@ -21,16 +21,11 @@
 #include "exec/memory-internal.h"
 #include "exec/ram_addr.h"
 
+/*CacheSim  */
 MemCache* cache;
-
-bool cache_status = false; /* is constructed */
-bool cache_active(){return cache_status;}
-
+bool cache_status = false; /* true after cache initialization */
 bool cache_simulation_status = CACHE_SIMULATION; /* actual simulation of misses and hits */
 bool cache_simulation_active(void){return cache_simulation_status;}
-
-bool tc_lookup_status = TC_LOOKUP;
-bool tc_lookup_active(void){return tc_lookup_status;}
 
 struct CacheLine{
     bool valid;
@@ -60,23 +55,10 @@ struct MemCache {
     uint64_t cache_hits;
     uint64_t cache_misses;
     uint64_t replacements;
+    /* icount miss offset implementation */
+    pthread_mutex_t icount_cache_miss_offset_mutex;
+    int64_t icount_cache_miss_offset;
 };
-
-
-int ipow(int base, int exp)
-{
-    int result = 1;
-    while (exp)
-    {
-        if (exp & 1)
-            result *= base;
-        exp >>= 1;
-        base *= base;
-    }
-
-    return result;
-}
-
 
 // constructor (OOP style);
 void MemCache__init(MemCache* self, uint32_t size, uint8_t ways, CacheLine* line_ptr, CacheSet* set_ptr,
@@ -91,7 +73,9 @@ void MemCache__init(MemCache* self, uint32_t size, uint8_t ways, CacheLine* line
     self->cache_misses = 0;
     self->replacements = 0;
     self->miss_latency = MISS_LATENCY;
-
+    /* icount miss offset implementation */
+    self->icount_cache_miss_offset = 0;
+    pthread_mutex_init(&self->icount_cache_miss_offset_mutex, NULL);
     cache_status = true;
 }
 
@@ -170,15 +154,20 @@ void lru_replace(CacheLine *cache_line, uint64_t addr_tag){
 
 void direct_cache_miss(unsigned size, bool valid_bit, CacheLine *cache_line, uint64_t addr_tag){
 
+    // miss simulation time *real* rdtsc
+//    for(int i = 0; i < cache->miss_latency; ++i){
+//        asm volatile("nop");
+//    }
+
+    /* icount miss offset implementation */
+    pthread_mutex_lock(&cache->icount_cache_miss_offset_mutex);
+    cache->icount_cache_miss_offset += cache->miss_latency;
+    pthread_mutex_unlock(&cache->icount_cache_miss_offset_mutex);
+
     // store TAG to CACHE and set valid bit
     cache_line->tag = addr_tag;
     if(!valid_bit)
         cache_line->valid = true;
-
-    // miss simulation time
-    for(int i = 0; i < cache->miss_latency; ++i){
-        asm volatile("nop");
-    }
 
     cache->cache_misses++;
     pthread_mutex_unlock(&cache_line->cache_line_mutex);
@@ -187,18 +176,20 @@ void direct_cache_miss(unsigned size, bool valid_bit, CacheLine *cache_line, uin
 void associative_cache_miss(unsigned size, bool replacement,
                             CacheLine *cache_line, CacheSet* cache_set, uint64_t addr_tag){
 
-        /* currently not working due to rdtsc behaviour.
-         * cpu_get_ticks() should work the way it is supposed to be
-         * but i get some strange decreasing ticks in some test cases */
 //        struct timespec ts;
 //        ts.tv_sec = 0;
 //        ts.tv_nsec = cache->miss_latency;
 //        nanosleep(&ts, NULL);
 
-    // miss simulation time
-    for(int i = 0; i < cache->miss_latency; ++i){
-        asm volatile("nop");
-    }
+    // miss simulation time *real* rdtsc
+//    for(int i = 0; i < cache->miss_latency; ++i){
+//        asm volatile("nop");
+//    }
+
+    /* icount miss offset implementation */
+    pthread_mutex_lock(&cache->icount_cache_miss_offset_mutex);
+    cache->icount_cache_miss_offset += cache->miss_latency;
+    pthread_mutex_unlock(&cache->icount_cache_miss_offset_mutex);
 
     // no replacement because line never used before; just store tag;
     if(!replacement){
@@ -215,10 +206,6 @@ void associative_cache_miss(unsigned size, bool replacement,
     miss_out:
     cache->cache_misses++;
     pthread_mutex_unlock(&cache_line->cache_line_mutex);
-}
-
-uint64_t get_icount_cache_miss_offset(void){
-    return (uint64_t)(cache->cache_misses * cache->miss_latency);
 }
 
 void check_hit_miss(hwaddr addr, unsigned size){
@@ -300,16 +287,9 @@ void check_hit_miss(hwaddr addr, unsigned size){
     return;
 }
 
-/* Tried to flush my cache to enable timing attacks but
- * doesn't work out due to tcg behaviour. See translate.c:7947
- */
+/* flush all called by helper function helper_flush_all
+ * generated in translate.c case - clflush */
 void flush_all(void){
-
-    FILE *fc = fopen("logs/hit_log", "ab+");
-    assert(fc != NULL);
-    fprintf(fc, "flush!\n");
-    fclose(fc);
-
     /* direct cache mapping */
     if(DIRECT_CACHE){
         uint32_t lines = cache->size/cache->block_size;
@@ -335,7 +315,7 @@ void flush_all(void){
     }
 }
 
-/* functions for printing simple hit count */
+/* function for printing simple hit count */
 void write_log(void){
     FILE *fc = fopen("logs/hit_log", "ab+");
     assert(fc != NULL);
@@ -347,7 +327,6 @@ void write_log(void){
 
 /* functions used by hmp-commands to control cache via qemu monitor */
 void enable_cache_simulation(void){
-    //tc_lookup_status = false;
     write_log();
     FILE *fc = fopen("logs/hit_log", "ab+");
     assert(fc != NULL);
@@ -364,5 +343,10 @@ void disable_cache_simulation(void){
     fclose(fc);
 
 }
-void enable_tc_lookup(void){ tc_lookup_status = true; }
-void disable_tc_lookup(void){ tc_lookup_status = false; }
+
+/* icount miss offset implementation */
+bool cache_active(){return cache_status;}
+
+int64_t get_icount_cache_miss_offset(void){
+    return cache->icount_cache_miss_offset;
+}

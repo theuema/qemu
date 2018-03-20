@@ -171,6 +171,9 @@ int64_t cpu_get_icount_raw(void)
 static int64_t cpu_get_icount_locked(void)
 {
     int64_t icount = cpu_get_icount_raw();
+    int64_t test = timers_state.qemu_icount_bias + cpu_icount_to_ns(icount);
+    /*CacheSim
+     * icount miss offset implementation */
     if(cache_simulation_active() && cache_active()){
         return timers_state.qemu_icount_bias + cpu_icount_to_ns(icount) + get_icount_cache_miss_offset();
     }

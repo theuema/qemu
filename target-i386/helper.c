@@ -770,14 +770,6 @@ int x86_cpu_handle_mmu_fault(CPUState *cs, vaddr addr,
 
             pml4e_addr = ((env->cr[3] & ~0xfff) + (((addr >> 39) & 0x1ff) << 3)) &
                 env->a20_mask;
-            //theuematry
-//            FILE *fc = fopen("logs/big_log", "ab+");
-//            assert(fc != NULL);
-//            fprintf(fc, "helper.c:x86_cpu_handle_mmu_fault\n");
-//            fprintf(fc, "-> guest pml4e phys addr = %llx\n", pml4e_addr);
-//            fprintf(fc, "go to x86_ldq_phys");
-//            fclose(fc);
-
             pml4e = x86_ldq_phys(cs, pml4e_addr);
             if (!(pml4e & PG_PRESENT_MASK)) {
                 goto do_fault;
@@ -985,15 +977,6 @@ do_check_protect_pse36:
     paddr = pte + page_offset;
 
     assert(prot & (1 << is_write1));
-
-//    //theuematry
-//    FILE *cd = fopen("logs/big_log", "ab+");
-//    assert(cd != NULL);
-//    fprintf(cd, "helper.c:x86_cpu_handle_mmu_fault\n");
-//    fprintf(cd, "-> all addresses for tlb_set_page_with_attr:985 \n");
-//    fprintf(cd, "--> vaddr = %llx, page offset = %llx, paddr = %llx \n", vaddr, page_offset, paddr);
-//    fclose(cd);
-
     tlb_set_page_with_attrs(cs, vaddr, paddr, cpu_get_mem_attrs(env),
                             prot, mmu_idx, page_size);
     return 0;

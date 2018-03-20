@@ -288,10 +288,6 @@ static TranslationBlock *tb_find_slow(CPUState *cpu,
 
     tb = tb_find_physical(cpu, pc, cs_base, flags);
 
-    /* theuema, disable tc lookup for generating memory accesses in user mode */
-    if(!tc_lookup_active())
-        tb = NULL;
-
     if (tb) {
         goto found;
     }
@@ -306,10 +302,6 @@ static TranslationBlock *tb_find_slow(CPUState *cpu,
     mmap_lock();
     tb_lock();
     tb = tb_find_physical(cpu, pc, cs_base, flags);
-
-    /* theuema, disable tc lookup for generating memory accesses in user mode */
-    if(!tc_lookup_active())
-        tb = NULL;
 
     if (tb) {
         mmap_unlock();
@@ -345,10 +337,6 @@ static inline TranslationBlock *tb_find_fast(CPUState *cpu,
     cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
     tb_lock();
     tb = cpu->tb_jmp_cache[tb_jmp_cache_hash_func(pc)];
-
-    /* theuema, disable tc lookup for generating memory accesses in user mode */
-    if(!tc_lookup_active())
-        tb = NULL;
 
     if (unlikely(!tb || tb->pc != pc || tb->cs_base != cs_base ||
                  tb->flags != flags)) {

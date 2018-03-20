@@ -21,6 +21,7 @@
 #include "exec/memory-internal.h"
 #include "exec/ram_addr.h"
 
+/*CacheSim  */
 /* memory_region_ram_read & memory_region_ram_write
  *
  * When ram initialization-functions
@@ -34,20 +35,8 @@ static uint64_t memory_region_ram_read(void *opaque,
                                        hwaddr addr, unsigned size)
 {
     if(cache_simulation_active()){
-        for(int i = 0; i < MISS_LATENCY; ++i){
-            asm volatile("nop");
-        }
-        //check_hit_miss(addr, size);
+        check_hit_miss(addr, size);
     }
-//
-
-
-//    //theuematry
-//    FILE *fc = fopen("logs/big_log", "ab+");
-//    assert(fc != NULL);
-//    fprintf(fc, "memory_rw_mod.c:memory_region_ram_read\n");
-//    fprintf(fc, "-> hwaddr addr = %llx\n", addr);
-
 
     MemoryRegion *mr = opaque;
     uint64_t data = (uint64_t)~0;
@@ -66,10 +55,6 @@ static uint64_t memory_region_ram_read(void *opaque,
             data = *(uint64_t *)(mr->ram_block->host + addr);
             break;
     }
-
-//    fprintf(fc, "-> mr->ram_block->host + addr = %llx\n", (mr->ram_block->host + addr));
-//    fclose(fc);
-
     return data;
 }
 static void memory_region_ram_write(void *opaque, hwaddr addr,
