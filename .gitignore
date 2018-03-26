@@ -1,3 +1,9 @@
+.DS_Store
+.idea/
+build_x86_64_debug/
+cmake-build-debug/
+logs/
+
 /config-devices.*
 /config-all-devices.*
 /config-all-disas.*
