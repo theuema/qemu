@@ -32,7 +32,7 @@ void associative_cache_miss(unsigned size, bool replacement,
 
 //uint64_t get_icount_cache_miss_offset(void);
 void lru_replace(CacheLine *cache_line, uint64_t addr_tag);
-void flush_all(void);
+void cache_flush_all(void);
 void write_log(void);
 
 bool cache_simulation_active(void);

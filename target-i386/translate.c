@@ -7946,8 +7946,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
 
         CASE_MODRM_MEM_OP(7): /* clflush / clflushopt */
             /*CacheSim  */
-            gen_helper_flush_all(NULL);
-
+            gen_helper_flush_all(0);
             if (prefixes & PREFIX_LOCK) {
                 goto illegal_op;
             }

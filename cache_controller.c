@@ -154,15 +154,15 @@ void lru_replace(CacheLine *cache_line, uint64_t addr_tag){
 
 void direct_cache_miss(unsigned size, bool valid_bit, CacheLine *cache_line, uint64_t addr_tag){
 
-    // miss simulation time *real* rdtsc
-//    for(int i = 0; i < cache->miss_latency; ++i){
-//        asm volatile("nop");
-//    }
-
     /* icount miss offset implementation */
-    pthread_mutex_lock(&cache->icount_cache_miss_offset_mutex);
-    cache->icount_cache_miss_offset += cache->miss_latency;
-    pthread_mutex_unlock(&cache->icount_cache_miss_offset_mutex);
+//    pthread_mutex_lock(&cache->icount_cache_miss_offset_mutex);
+//    cache->icount_cache_miss_offset += cache->miss_latency;
+//    pthread_mutex_unlock(&cache->icount_cache_miss_offset_mutex);
+
+    // miss simulation time *real* rdtsc
+    for(int i = 0; i < cache->miss_latency; ++i){
+        asm volatile("nop");
+    }
 
     // store TAG to CACHE and set valid bit
     cache_line->tag = addr_tag;
@@ -176,20 +176,22 @@ void direct_cache_miss(unsigned size, bool valid_bit, CacheLine *cache_line, uin
 void associative_cache_miss(unsigned size, bool replacement,
                             CacheLine *cache_line, CacheSet* cache_set, uint64_t addr_tag){
 
+
+    /* icount miss offset implementation */
+//    pthread_mutex_lock(&cache->icount_cache_miss_offset_mutex);
+//    cache->icount_cache_miss_offset += cache->miss_latency;
+//    pthread_mutex_unlock(&cache->icount_cache_miss_offset_mutex);
+
+    /* optional */
 //        struct timespec ts;
 //        ts.tv_sec = 0;
 //        ts.tv_nsec = cache->miss_latency;
 //        nanosleep(&ts, NULL);
 
-    // miss simulation time *real* rdtsc
-//    for(int i = 0; i < cache->miss_latency; ++i){
-//        asm volatile("nop");
-//    }
-
-    /* icount miss offset implementation */
-    pthread_mutex_lock(&cache->icount_cache_miss_offset_mutex);
-    cache->icount_cache_miss_offset += cache->miss_latency;
-    pthread_mutex_unlock(&cache->icount_cache_miss_offset_mutex);
+     /* miss simulation time *real* rdtsc */
+    for(int i = 0; i < cache->miss_latency; ++i){
+        asm volatile("nop");
+    }
 
     // no replacement because line never used before; just store tag;
     if(!replacement){
@@ -209,7 +211,7 @@ void associative_cache_miss(unsigned size, bool replacement,
 }
 
 void check_hit_miss(hwaddr addr, unsigned size){
-    uint64_t addr_tag = addr >> (cache->kbits+cache->nbits);
+    uint64_t addr_tag = addr >> (cache->kbits + cache->nbits);
     CacheLine* cache_line;
 
     if(cache->ways)
@@ -289,7 +291,7 @@ void check_hit_miss(hwaddr addr, unsigned size){
 
 /* flush all called by helper function helper_flush_all
  * generated in translate.c case - clflush */
-void flush_all(void){
+void cache_flush_all(void){
     /* direct cache mapping */
     if(DIRECT_CACHE){
         uint32_t lines = cache->size/cache->block_size;
@@ -308,7 +310,7 @@ void flush_all(void){
 
             CacheLine* curr_line_ptr;
             for(uint8_t n = 0; n < curr_set_ptr->lines; n++){
-                curr_line_ptr = curr_set_ptr->cache_line_ptr+i;
+                curr_line_ptr = curr_set_ptr->cache_line_ptr+n;
                 curr_line_ptr->valid = false;
             }
         }

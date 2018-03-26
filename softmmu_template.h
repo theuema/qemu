@@ -148,7 +148,7 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
     int index = (addr >> TARGET_PAGE_BITS) & (CPU_TLB_SIZE - 1);
     target_ulong tlb_addr = env->tlb_table[mmu_idx][index].ADDR_READ;
     int a_bits = get_alignment_bits(get_memop(oi));
-    uintptr_t haddr, guest_phys_haddr;
+    uintptr_t haddr;
     DATA_TYPE res;
 
     /* Adjust the given return address.  */
@@ -205,6 +205,7 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
         return res;
     }
     /*CacheSim  */
+    uintptr_t guest_phys_haddr;
     guest_phys_haddr = addr - env->tlb_table[mmu_idx][index].ADDR_READ + env->tlb_table[mmu_idx][index].phys;
     if(cache_simulation_active()){
         check_hit_miss(guest_phys_haddr, 0);

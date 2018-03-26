@@ -288,9 +288,8 @@ static TranslationBlock *tb_find_slow(CPUState *cpu,
 
     tb = tb_find_physical(cpu, pc, cs_base, flags);
 
-    if (tb) {
+    if (tb)
         goto found;
-    }
 
 #ifdef CONFIG_USER_ONLY
     /* mmap_lock is needed by tb_gen_code, and mmap_lock must be
@@ -338,7 +337,7 @@ static inline TranslationBlock *tb_find_fast(CPUState *cpu,
     tb_lock();
     tb = cpu->tb_jmp_cache[tb_jmp_cache_hash_func(pc)];
 
-    if (unlikely(!tb || tb->pc != pc || tb->cs_base != cs_base ||
+    if (cache_simulation_active() || unlikely(!tb || tb->pc != pc || tb->cs_base != cs_base ||
                  tb->flags != flags)) {
         tb = tb_find_slow(cpu, pc, cs_base, flags);
     }

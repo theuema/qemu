@@ -2567,6 +2567,6 @@ void helper_check_iol(CPUX86State *env, uint32_t t0)
 }
 
 /*CacheSim  */
-void helper_flush_all(int not_used){
-    flush_all();
+void helper_flush_all(int a){
+    cache_flush_all();
 }
