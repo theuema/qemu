@@ -32,48 +32,49 @@
  * ram area is allocated via allocate_system_memory_nonnuma -> memory_region_init_ram;
  */
 static uint64_t memory_region_ram_read(void *opaque,
-                                       hwaddr addr, unsigned size)
-{
-    if(cache_simulation_active()){
+                                       hwaddr addr, unsigned size) {
+    if (cache_simulation_active()) {
         check_hit_miss(addr, size);
     }
 
     MemoryRegion *mr = opaque;
-    uint64_t data = (uint64_t)~0;
+    uint64_t
+    data = (uint64_t)
+    ~0;
 
     switch (size) {
         case 1:
-            data = *(uint8_t *)(mr->ram_block->host + addr);
+            data = *(uint8_t * )(mr->ram_block->host + addr);
             break;
         case 2:
-            data = *(uint16_t *)(mr->ram_block->host + addr);
+            data = *(uint16_t * )(mr->ram_block->host + addr);
             break;
         case 4:
-            data = *(uint32_t *)(mr->ram_block->host + addr);
+            data = *(uint32_t * )(mr->ram_block->host + addr);
             break;
         case 8:
-            data = *(uint64_t *)(mr->ram_block->host + addr);
+            data = *(uint64_t * )(mr->ram_block->host + addr);
             break;
     }
     return data;
 }
+
 static void memory_region_ram_write(void *opaque, hwaddr addr,
-                                    uint64_t data, unsigned size)
-{
+                                    uint64_t data, unsigned size) {
     MemoryRegion *mr = opaque;
 
     switch (size) {
         case 1:
-            *(uint8_t *)(mr->ram_block->host + addr) = (uint8_t)data;
+            *(uint8_t * )(mr->ram_block->host + addr) = (uint8_t) data;
             break;
         case 2:
-            *(uint16_t *)(mr->ram_block->host + addr) = (uint16_t)data;
+            *(uint16_t * )(mr->ram_block->host + addr) = (uint16_t) data;
             break;
         case 4:
-            *(uint32_t *)(mr->ram_block->host + addr) = (uint32_t)data;
+            *(uint32_t * )(mr->ram_block->host + addr) = (uint32_t) data;
             break;
         case 8:
-            *(uint64_t *)(mr->ram_block->host + addr) = data;
+            *(uint64_t * )(mr->ram_block->host + addr) = data;
             break;
     }
 }
@@ -97,8 +98,7 @@ static const MemoryRegionOps ram_mem_ops = {
         },
 };
 
-static void mem_destructor_ram(MemoryRegion *mr)
-{
+static void mem_destructor_ram(MemoryRegion *mr) {
     qemu_ram_free(mr->ram_block);
 }
 
@@ -112,7 +112,7 @@ void memory_region_init_rw_mod(MemoryRegion *mr,
                                Object *owner,
                                const char *name,
                                uint64_t ram_size,
-                               Error **error_fatal){
+                               Error **error_fatal) {
 
     memory_region_init(mr, owner, name, ram_size);
     mr->ram = true;

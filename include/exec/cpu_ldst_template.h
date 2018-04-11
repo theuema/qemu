@@ -195,6 +195,12 @@ glue(glue(glue(cpu_st, SUFFIX), MEMSUFFIX), _ra)(CPUArchState *env,
         glue(glue(helper_ret_st, SUFFIX), MMUSUFFIX)(env, addr, v, oi,
                                                      retaddr);
     } else {
+        /*CacheSim  */
+        uintptr_t guest_phys_haddr;
+        guest_phys_haddr = addr - env->tlb_table[mmu_idx][page_index].ADDR_READ + env->tlb_table[mmu_idx][page_index].phys;
+        if(cache_simulation_active()){
+            check_hit_miss(guest_phys_haddr, 0);
+        }
         uintptr_t hostaddr = addr + env->tlb_table[mmu_idx][page_index].addend;
         glue(glue(st, SUFFIX), _p)((uint8_t *)hostaddr, v);
     }
